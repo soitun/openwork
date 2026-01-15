@@ -944,6 +944,17 @@ export function registerIPCHandlers(): void {
       if (config.lastValidated !== undefined && typeof config.lastValidated !== 'number') {
         throw new Error('Invalid Ollama configuration');
       }
+      // Validate optional models array if present
+      if (config.models !== undefined) {
+        if (!Array.isArray(config.models)) {
+          throw new Error('Invalid Ollama configuration: models must be an array');
+        }
+        for (const model of config.models) {
+          if (typeof model.id !== 'string' || typeof model.displayName !== 'string' || typeof model.size !== 'number') {
+            throw new Error('Invalid Ollama configuration: invalid model format');
+          }
+        }
+      }
     }
     setOllamaConfig(config);
     console.log('[Ollama] Config saved:', config);
