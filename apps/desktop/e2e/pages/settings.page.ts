@@ -12,6 +12,25 @@ export class SettingsPage {
     return this.page.getByTestId('settings-debug-toggle');
   }
 
+  // Wizard step buttons
+  get cloudButton() {
+    return this.page.getByTestId('settings-cloud-button');
+  }
+
+  get localButton() {
+    return this.page.getByTestId('settings-local-button');
+  }
+
+  // Dialog elements
+  get dialogTitle() {
+    return this.page.getByRole('heading', { name: 'Settings' });
+  }
+
+  get sidebarSettingsButton() {
+    return this.page.getByTestId('sidebar-settings-button');
+  }
+
+  // Legacy locators kept for backward compatibility
   get modelSection() {
     return this.page.getByTestId('settings-model-section');
   }
@@ -40,28 +59,22 @@ export class SettingsPage {
     return this.page.getByTestId('settings-back-button');
   }
 
-  get sidebarSettingsButton() {
-    return this.page.getByTestId('sidebar-settings-button');
-  }
-
   async navigateToSettings() {
     // Click the settings button in sidebar to navigate
     await this.sidebarSettingsButton.click();
-    // Wait for settings dialog to be visible
-    await this.modelSelect.waitFor({ state: 'visible', timeout: TEST_TIMEOUTS.NAVIGATION });
+    // Wait for settings dialog to be visible (wizard shows Cloud/Local buttons)
+    await this.cloudButton.waitFor({ state: 'visible', timeout: TEST_TIMEOUTS.NAVIGATION });
   }
 
   async toggleDebugMode() {
     await this.debugModeToggle.click();
   }
 
-  async selectModel(modelName: string) {
-    await this.modelSelect.click();
-    await this.page.getByText(modelName).click();
+  async selectCloudProvider() {
+    await this.cloudButton.click();
   }
 
-  async addApiKey(provider: string, key: string) {
-    await this.apiKeyInput.fill(key);
-    await this.addApiKeyButton.click();
+  async selectLocalProvider() {
+    await this.localButton.click();
   }
 }

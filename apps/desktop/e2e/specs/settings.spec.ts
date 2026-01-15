@@ -20,16 +20,16 @@ test.describe('Settings Dialog', () => {
       'dialog-open',
       [
         'Settings dialog is visible',
-        'Dialog contains settings sections',
+        'Dialog contains wizard with Cloud/Local options',
         'User can interact with settings'
       ]
     );
 
-    // Verify dialog opened by checking for model select
-    await expect(settingsPage.modelSelect).toBeVisible({ timeout: TEST_TIMEOUTS.NAVIGATION });
+    // Verify dialog opened by checking for Cloud button (wizard first step)
+    await expect(settingsPage.cloudButton).toBeVisible({ timeout: TEST_TIMEOUTS.NAVIGATION });
   });
 
-  test('should display model selection dropdown', async ({ window }) => {
+  test('should display model type selection buttons', async ({ window }) => {
     const settingsPage = new SettingsPage(window);
 
     // Fixture already handles hydration, just ensure DOM is ready
@@ -38,23 +38,24 @@ test.describe('Settings Dialog', () => {
     // Open settings dialog
     await settingsPage.navigateToSettings();
 
-    // Verify model select is visible
-    await expect(settingsPage.modelSelect).toBeVisible({ timeout: TEST_TIMEOUTS.NAVIGATION });
+    // Verify Cloud and Local buttons are visible
+    await expect(settingsPage.cloudButton).toBeVisible({ timeout: TEST_TIMEOUTS.NAVIGATION });
+    await expect(settingsPage.localButton).toBeVisible({ timeout: TEST_TIMEOUTS.NAVIGATION });
 
     // Capture model section
     await captureForAI(
       window,
       'settings-dialog',
-      'model-section',
+      'model-type-selection',
       [
-        'Model selection dropdown is visible',
-        'Model options are available',
-        'User can select a model'
+        'Cloud and Local model type buttons are visible',
+        'User can select between cloud providers and local models',
+        'Wizard first step is displayed'
       ]
     );
   });
 
-  test('should display API key input', async ({ window }) => {
+  test('should navigate to provider selection when clicking Cloud', async ({ window }) => {
     const settingsPage = new SettingsPage(window);
 
     // Fixture already handles hydration, just ensure DOM is ready
@@ -63,53 +64,21 @@ test.describe('Settings Dialog', () => {
     // Open settings dialog
     await settingsPage.navigateToSettings();
 
-    // Scroll to API key section if needed
-    await settingsPage.apiKeyInput.scrollIntoViewIfNeeded();
+    // Click Cloud button
+    await settingsPage.selectCloudProvider();
 
-    // Verify API key input is visible
-    await expect(settingsPage.apiKeyInput).toBeVisible({ timeout: TEST_TIMEOUTS.NAVIGATION });
+    // Verify we're on provider selection step (look for provider names)
+    await expect(window.getByText('Anthropic')).toBeVisible({ timeout: TEST_TIMEOUTS.NAVIGATION });
 
-    // Capture API key section
+    // Capture provider selection
     await captureForAI(
       window,
       'settings-dialog',
-      'api-key-section',
+      'provider-selection',
       [
-        'API key input is visible',
-        'User can enter an API key',
-        'Input is accessible'
-      ]
-    );
-  });
-
-  test('should allow typing in API key input', async ({ window }) => {
-    const settingsPage = new SettingsPage(window);
-
-    // Fixture already handles hydration, just ensure DOM is ready
-    await window.waitForLoadState('domcontentloaded');
-
-    // Open settings dialog
-    await settingsPage.navigateToSettings();
-
-    // Scroll to API key input
-    await settingsPage.apiKeyInput.scrollIntoViewIfNeeded();
-
-    // Type in API key input
-    const testKey = 'sk-ant-test-key-12345';
-    await settingsPage.apiKeyInput.fill(testKey);
-
-    // Verify value was entered
-    await expect(settingsPage.apiKeyInput).toHaveValue(testKey);
-
-    // Capture filled state
-    await captureForAI(
-      window,
-      'settings-dialog',
-      'api-key-filled',
-      [
-        'API key input has value',
-        'Input accepts text entry',
-        'Value is correctly displayed'
+        'Provider selection step is visible',
+        'Cloud providers are listed',
+        'User can select a provider'
       ]
     );
   });
@@ -190,13 +159,13 @@ test.describe('Settings Dialog', () => {
     await settingsPage.navigateToSettings();
 
     // Verify dialog is open
-    await expect(settingsPage.modelSelect).toBeVisible({ timeout: TEST_TIMEOUTS.NAVIGATION });
+    await expect(settingsPage.cloudButton).toBeVisible({ timeout: TEST_TIMEOUTS.NAVIGATION });
 
     // Press Escape to close dialog - expect handles the wait
     await window.keyboard.press('Escape');
 
-    // Verify dialog closed (model select should not be visible)
-    await expect(settingsPage.modelSelect).not.toBeVisible({ timeout: TEST_TIMEOUTS.NAVIGATION });
+    // Verify dialog closed (cloud button should not be visible)
+    await expect(settingsPage.cloudButton).not.toBeVisible({ timeout: TEST_TIMEOUTS.NAVIGATION });
 
     // Capture closed state
     await captureForAI(

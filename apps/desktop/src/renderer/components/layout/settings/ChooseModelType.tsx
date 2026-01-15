@@ -21,6 +21,7 @@ export default function ChooseModelType({ onSelect, currentModel }: ChooseModelT
       <div className="grid grid-cols-2 gap-4">
         <button
           type="button"
+          data-testid="settings-cloud-button"
           onClick={() => onSelect('cloud')}
           className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-6 transition-all hover:border-primary hover:bg-muted"
         >
@@ -34,6 +35,7 @@ export default function ChooseModelType({ onSelect, currentModel }: ChooseModelT
         </button>
         <button
           type="button"
+          data-testid="settings-local-button"
           onClick={() => onSelect('local')}
           className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-6 transition-all hover:border-primary hover:bg-muted"
         >
