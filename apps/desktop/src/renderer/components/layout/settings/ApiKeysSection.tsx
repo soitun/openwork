@@ -72,7 +72,7 @@ export default function ApiKeysSection({ savedKeys, onKeysChange }: ApiKeysSecti
 
   return (
     <section>
-      <h2 className="mb-4 text-base font-medium text-foreground">API Keys</h2>
+      <h2 className="mb-4 text-base font-medium text-foreground">My API Keys</h2>
       <div className="rounded-lg border border-border bg-card p-5">
         {savedKeys.length > 0 && (
           <div className="space-y-2 mb-4">

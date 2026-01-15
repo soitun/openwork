@@ -39,7 +39,7 @@ describe('ApiKeysSection', () => {
     it('should render section title', () => {
       render(<ApiKeysSection savedKeys={savedKeys} onKeysChange={vi.fn()} />);
 
-      expect(screen.getByText('API Keys')).toBeInTheDocument();
+      expect(screen.getByText('My API Keys')).toBeInTheDocument();
     });
 
     it('should render saved keys', () => {
