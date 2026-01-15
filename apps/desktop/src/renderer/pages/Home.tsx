@@ -179,6 +179,7 @@ export default function HomePage() {
                 isLoading={isLoading}
                 placeholder="Describe a task and let AI handle the rest"
                 large={true}
+                autoFocus={true}
               />
             </CardContent>
 
