@@ -278,7 +278,9 @@ export interface DevBrowserClient {
 }
 
 // Accomplish uses port 9224 to avoid conflicts with Claude Code's dev-browser (9222)
-export async function connect(serverUrl = "http://localhost:9224"): Promise<DevBrowserClient> {
+// Multi-agent support: read port from DEV_BROWSER_PORT env var if set
+const DEFAULT_DEV_BROWSER_PORT = process.env.DEV_BROWSER_PORT || "9224";
+export async function connect(serverUrl = `http://localhost:${DEFAULT_DEV_BROWSER_PORT}`): Promise<DevBrowserClient> {
   let browser: Browser | null = null;
   let wsEndpoint: string | null = null;
   let connectingPromise: Promise<Browser> | null = null;

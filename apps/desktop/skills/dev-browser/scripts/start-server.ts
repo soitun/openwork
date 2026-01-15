@@ -9,15 +9,21 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Use a user-writable location for tmp and profiles (app bundle is read-only when installed)
 // On macOS: ~/Library/Application Support/Accomplish/dev-browser/
 // Fallback: system temp directory
+// Multi-agent support: add agent suffix to avoid profile conflicts
 function getDataDir(): string {
   const homeDir = process.env.HOME || process.env.USERPROFILE || "";
+  // Multi-agent: derive suffix from DEV_BROWSER_PORT (9224=agent1, 9234=agent2, etc.)
+  const port = parseInt(process.env.DEV_BROWSER_PORT || '9224', 10);
+  const agentNum = Math.floor((port - 9224) / 10) + 1;
+  const agentSuffix = agentNum > 1 ? `-agent-${agentNum}` : '';
+
   if (process.platform === "darwin") {
-    return join(homeDir, "Library", "Application Support", "Accomplish", "dev-browser");
+    return join(homeDir, "Library", "Application Support", "Accomplish", `dev-browser${agentSuffix}`);
   } else if (process.platform === "win32") {
-    return join(process.env.APPDATA || homeDir, "Accomplish", "dev-browser");
+    return join(process.env.APPDATA || homeDir, "Accomplish", `dev-browser${agentSuffix}`);
   } else {
     // Linux or fallback
-    return join(homeDir, ".accomplish", "dev-browser");
+    return join(homeDir, ".accomplish", `dev-browser${agentSuffix}`);
   }
 }
 
