@@ -155,12 +155,14 @@ export default function SettingsDialog({ open, onOpenChange, onApiKeySaved }: Se
     const accomplish = getAccomplish();
     const model = await accomplish.getSelectedModel();
     setCurrentModel(model);
-    // Reset wizard after showing success message (1.5s)
+    // After showing success message, close dialog and execute pending task
     setTimeout(() => {
       setCompletionMessage(null);
       setWizardStep('choose-type');
       setSelectedModelType(null);
       setSelectedProvider(null);
+      // Call onApiKeySaved to close dialog and execute any pending prompt
+      onApiKeySaved?.();
     }, 1500);
   };
 
