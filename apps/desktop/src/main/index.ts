@@ -7,6 +7,7 @@ import { registerIPCHandlers } from './ipc/handlers';
 import { flushPendingTasks } from './store/taskHistory';
 import { disposeTaskManager } from './opencode/task-manager';
 import { checkAndCleanupFreshInstall } from './store/freshInstallCleanup';
+import { isMultiAgentMode } from './utils/agent-config';
 
 // Local UI - no longer uses remote URL
 
@@ -119,8 +120,8 @@ function createWindow() {
   }
 }
 
-// Single instance lock
-const gotTheLock = app.requestSingleInstanceLock();
+// Single instance lock - skip in multi-agent mode to allow parallel instances
+const gotTheLock = isMultiAgentMode() ? true : app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
   console.log('[Main] Second instance attempted; quitting');
