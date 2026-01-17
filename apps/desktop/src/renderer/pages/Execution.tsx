@@ -88,6 +88,7 @@ export default function ExecutionPage() {
   const [debugModeEnabled, setDebugModeEnabled] = useState(false);
   const [debugExported, setDebugExported] = useState(false);
   const debugPanelRef = useRef<HTMLDivElement>(null);
+  const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
 
   const {
     currentTask,
@@ -271,7 +272,9 @@ export default function ExecutionPage() {
       requestId: permissionRequest.id,
       taskId: permissionRequest.taskId,
       decision: allowed ? 'allow' : 'deny',
+      selectedOptions: permissionRequest.type === 'question' ? selectedOptions : undefined,
     });
+    setSelectedOptions([]); // Reset for next question
   };
 
   if (error) {
@@ -648,11 +651,53 @@ export default function ExecutionPage() {
                       </>
                     )}
 
-                    {/* Standard question/tool UI */}
-                    {permissionRequest.type !== 'file' && (
+                    {/* Question type UI with options */}
+                    {permissionRequest.type === 'question' && (
+                      <>
+                        <p className="text-sm text-foreground mb-4">
+                          {permissionRequest.question}
+                        </p>
+                        {permissionRequest.options && permissionRequest.options.length > 0 && (
+                          <div className="mb-4 space-y-2">
+                            {permissionRequest.options.map((option, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => {
+                                  if (permissionRequest.multiSelect) {
+                                    setSelectedOptions((prev) =>
+                                      prev.includes(option.label)
+                                        ? prev.filter((o) => o !== option.label)
+                                        : [...prev, option.label]
+                                    );
+                                  } else {
+                                    setSelectedOptions([option.label]);
+                                  }
+                                }}
+                                className={cn(
+                                  "w-full text-left p-3 rounded-lg border transition-colors",
+                                  selectedOptions.includes(option.label)
+                                    ? "border-primary bg-primary/10"
+                                    : "border-border hover:border-primary/50"
+                                )}
+                              >
+                                <div className="font-medium text-sm">{option.label}</div>
+                                {option.description && (
+                                  <div className="text-xs text-muted-foreground mt-1">
+                                    {option.description}
+                                  </div>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* Standard tool UI (non-file, non-question) */}
+                    {permissionRequest.type === 'tool' && (
                       <>
                         <p className="text-sm text-muted-foreground mb-4">
-                          {permissionRequest.question || `Allow ${permissionRequest.toolName}?`}
+                          Allow {permissionRequest.toolName}?
                         </p>
                         {permissionRequest.toolName && (
                           <div className="mb-4 p-3 rounded-lg bg-muted text-xs font-mono overflow-x-auto">
@@ -678,8 +723,9 @@ export default function ExecutionPage() {
                         onClick={() => handlePermissionResponse(true)}
                         className="flex-1"
                         data-testid="permission-allow-button"
+                        disabled={permissionRequest.type === 'question' && permissionRequest.options && selectedOptions.length === 0}
                       >
-                        Allow
+                        {permissionRequest.type === 'question' ? 'Submit' : 'Allow'}
                       </Button>
                     </div>
                   </div>
