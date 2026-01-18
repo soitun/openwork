@@ -163,7 +163,7 @@ If it returns JSON with a \`wsEndpoint\`, proceed with browser automation. If co
 
 **Fallback** (only if server isn't running after multiple checks):
 \`\`\`bash
-cd {{SKILLS_PATH}}/dev-browser && PATH="\${NODE_BIN_PATH}:\$PATH" ./server.sh &
+cd {{SKILLS_PATH}}/dev-browser && node server.js &
 \`\`\`
 </setup>
 
