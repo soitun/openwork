@@ -1,9 +1,11 @@
 # Base image with Playwright dependencies pre-installed
 FROM mcr.microsoft.com/playwright:v1.49.1-noble
 
-# Install Xvfb and additional dependencies for Electron
+# Install Xvfb, build tools (for node-pty), and additional dependencies for Electron
 RUN apt-get update && apt-get install -y \
     xvfb \
+    build-essential \
+    python3 \
     libnss3 \
     libatk1.0-0 \
     libatk-bridge2.0-0 \
@@ -30,6 +32,9 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/shared/package.json ./packages/shared/
 COPY apps/desktop/package.json ./apps/desktop/
+
+# Copy skills directories (needed by postinstall script)
+COPY apps/desktop/skills ./apps/desktop/skills
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
