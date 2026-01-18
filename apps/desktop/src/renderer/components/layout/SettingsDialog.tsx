@@ -75,6 +75,10 @@ export default function SettingsDialog({ open, onOpenChange, onApiKeySaved }: Se
   const [openrouterSearch, setOpenrouterSearch] = useState('');
   const [selectedOpenrouterModel, setSelectedOpenrouterModel] = useState<string>('');
   const [savingOpenrouter, setSavingOpenrouter] = useState(false);
+  // OpenRouter inline API key entry (for Proxy Platforms tab)
+  const [openrouterApiKey, setOpenrouterApiKey] = useState('');
+  const [openrouterApiKeyError, setOpenrouterApiKeyError] = useState<string | null>(null);
+  const [savingOpenrouterApiKey, setSavingOpenrouterApiKey] = useState(false);
 
   useEffect(() => {
     if (!open) return;
