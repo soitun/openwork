@@ -51,10 +51,22 @@ try {
 // Clean up stale CDP port if HTTP server isn't running (crash recovery)
 // This handles the case where Node crashed but Chrome is still running
 try {
-  const pid = execSync(`lsof -ti:${ACCOMPLISH_CDP_PORT}`, { encoding: "utf-8" }).trim();
-  if (pid) {
-    console.log(`Cleaning up stale Chrome process on CDP port ${ACCOMPLISH_CDP_PORT} (PID: ${pid})`);
-    execSync(`kill -9 ${pid}`);
+  if (process.platform === 'win32') {
+    // Windows: use netstat to find PID, then taskkill
+    const output = execSync(`netstat -ano | findstr :${ACCOMPLISH_CDP_PORT}`, { encoding: "utf-8" });
+    const match = output.match(/LISTENING\s+(\d+)/);
+    if (match) {
+      const pid = match[1];
+      console.log(`Cleaning up stale Chrome process on CDP port ${ACCOMPLISH_CDP_PORT} (PID: ${pid})`);
+      execSync(`taskkill /F /PID ${pid}`, { stdio: "ignore" });
+    }
+  } else {
+    // Unix: use lsof
+    const pid = execSync(`lsof -ti:${ACCOMPLISH_CDP_PORT}`, { encoding: "utf-8" }).trim();
+    if (pid) {
+      console.log(`Cleaning up stale Chrome process on CDP port ${ACCOMPLISH_CDP_PORT} (PID: ${pid})`);
+      execSync(`kill -9 ${pid}`);
+    }
   }
 } catch {
   // No process on CDP port, which is expected
@@ -99,7 +111,8 @@ function installPlaywrightChromium(): void {
   let pm: { name: string; command: string } | null = null;
   for (const manager of managers) {
     try {
-      execSync(`which ${manager.name}`, { stdio: "ignore" });
+      const cmd = process.platform === 'win32' ? `where ${manager.name}` : `which ${manager.name}`;
+      execSync(cmd, { stdio: "ignore" });
       pm = manager;
       break;
     } catch {
