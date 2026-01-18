@@ -76,6 +76,32 @@ export class SettingsPage {
     return this.page.getByTestId('bedrock-save-button');
   }
 
+  // Tab buttons
+  get cloudProvidersTab() {
+    return this.page.getByRole('button', { name: 'Cloud Providers' });
+  }
+
+  get localModelsTab() {
+    return this.page.getByRole('button', { name: 'Local Models' });
+  }
+
+  get proxyPlatformsTab() {
+    return this.page.getByRole('button', { name: 'Proxy Platforms' });
+  }
+
+  // Proxy Platforms tab elements
+  get openrouterPlatformButton() {
+    return this.page.locator('button:has-text("OpenRouter")').first();
+  }
+
+  get litellmPlatformButton() {
+    return this.page.locator('button:has-text("LiteLLM")');
+  }
+
+  get fetchModelsButton() {
+    return this.page.getByRole('button', { name: /Fetch Models|Refresh/ });
+  }
+
   async navigateToSettings() {
     // Click the settings button in sidebar to navigate
     await this.sidebarSettingsButton.click();
@@ -130,5 +156,9 @@ export class SettingsPage {
 
   async selectBedrockProfileTab() {
     await this.bedrockProfileTab.click();
+  }
+
+  async selectProxyPlatformsTab() {
+    await this.proxyPlatformsTab.click();
   }
 }
