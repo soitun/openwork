@@ -209,7 +209,7 @@ jobs:
         with:
           tag_name: v${{ needs.version-bump.outputs.new_version }}
           name: ${{ inputs.dry_run == true && '[TEST] ' || '' }}Openwork v${{ needs.version-bump.outputs.new_version }}
-          draft: true
+          draft: false
           prerelease: ${{ inputs.dry_run }}
           generate_release_notes: true
           files: |
@@ -217,3 +217,42 @@ jobs:
             ./release/x64/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify Slack of release
+        if: success() && inputs.dry_run != true
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_RELEASE_WEBHOOK_URL }}
+        run: |
+          VERSION="${{ needs.version-bump.outputs.new_version }}"
+          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/v${VERSION}"
+
+          # Build Slack message payload
+          PAYLOAD=$(jq -n \
+            --arg version "$VERSION" \
+            --arg url "$RELEASE_URL" \
+            '{
+              blocks: [
+                {
+                  type: "section",
+                  text: {
+                    type: "mrkdwn",
+                    text: "✅ *Openwork v\($version) Released!*\n\nDownload the latest version from GitHub."
+                  },
+                  accessory: {
+                    type: "button",
+                    text: { type: "plain_text", text: "View Release", emoji: true },
+                    url: $url,
+                    style: "primary"
+                  }
+                }
+              ]
+            }')
+
+          # Send to Slack (skip if webhook not configured)
+          if [ -n "$SLACK_WEBHOOK" ]; then
+            curl -f -X POST -H 'Content-type: application/json' \
+              --data "$PAYLOAD" \
+              "$SLACK_WEBHOOK" || echo "Warning: Failed to send Slack notification"
+          else
+            echo "SLACK_RELEASE_WEBHOOK_URL not configured, skipping notification"
+          fi
