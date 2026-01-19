@@ -48,11 +48,11 @@ export default function SettingsDialog({ open, onOpenChange, onApiKeySaved }: Se
 
   // Auto-expand grid if active provider is not in the first 4 visible providers
   useEffect(() => {
-    if (!open || !settings?.activeProviderId) return;
+    if (!open || loading || !settings?.activeProviderId) return;
     if (!FIRST_FOUR_PROVIDERS.includes(settings.activeProviderId)) {
       setGridExpanded(true);
     }
-  }, [open, settings?.activeProviderId]);
+  }, [open, loading, settings?.activeProviderId]);
 
   // Reset state when dialog closes
   useEffect(() => {
