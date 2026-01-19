@@ -102,6 +102,17 @@ export function OllamaProviderForm({
           </>
         ) : (
           <>
+            {/* Display saved server URL */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-foreground">Ollama Server URL</label>
+              <input
+                type="text"
+                value={(connectedProvider?.credentials as OllamaCredentials)?.serverUrl || 'http://localhost:11434'}
+                disabled
+                className="w-full rounded-md border border-input bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground"
+              />
+            </div>
+
             <ConnectedControls onDisconnect={onDisconnect} />
 
             {/* Model Selector */}

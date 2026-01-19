@@ -104,3 +104,21 @@ export function getActiveProvider(settings: ProviderSettings | null | undefined)
   if (!settings?.activeProviderId) return null;
   return settings.connectedProviders?.[settings.activeProviderId] ?? null;
 }
+
+/**
+ * Default models for main providers (auto-selected on connection)
+ * These are the recommended models for each provider
+ */
+export const DEFAULT_MODELS: Partial<Record<ProviderId, string>> = {
+  anthropic: 'anthropic/claude-sonnet-4-5',
+  openai: 'openai/gpt-5-codex',
+  google: 'google/gemini-3-flash-preview',
+  xai: 'xai/grok-4',
+};
+
+/**
+ * Get the default model for a provider (if one exists)
+ */
+export function getDefaultModelForProvider(providerId: ProviderId): string | null {
+  return DEFAULT_MODELS[providerId] ?? null;
+}

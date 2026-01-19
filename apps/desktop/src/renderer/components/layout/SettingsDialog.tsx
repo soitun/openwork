@@ -101,15 +101,30 @@ export default function SettingsDialog({ open, onOpenChange, onApiKeySaved }: Se
       await setActiveProvider(provider.providerId);
     }
 
-    onApiKeySaved?.();
+    // If provider is already ready (has a default model auto-selected), call onApiKeySaved
+    // Otherwise, wait for manual model selection via handleModelChange
+    if (isProviderReady(provider)) {
+      onApiKeySaved?.();
+    }
   }, [connectProvider, settings?.activeProviderId, setActiveProvider, onApiKeySaved]);
 
   // Handle provider disconnection
   const handleDisconnect = useCallback(async () => {
     if (!selectedProvider) return;
+    const wasActiveProvider = settings?.activeProviderId === selectedProvider;
     await disconnectProvider(selectedProvider);
     setSelectedProvider(null);
-  }, [selectedProvider, disconnectProvider]);
+
+    // If we just removed the active provider, auto-select another ready provider
+    if (wasActiveProvider && settings?.connectedProviders) {
+      const readyProviderId = Object.keys(settings.connectedProviders).find(
+        (id) => id !== selectedProvider && isProviderReady(settings.connectedProviders[id as ProviderId])
+      ) as ProviderId | undefined;
+      if (readyProviderId) {
+        await setActiveProvider(readyProviderId);
+      }
+    }
+  }, [selectedProvider, disconnectProvider, settings?.activeProviderId, settings?.connectedProviders, setActiveProvider]);
 
   // Handle model change
   const handleModelChange = useCallback(async (modelId: string) => {
@@ -155,8 +170,31 @@ export default function SettingsDialog({ open, onOpenChange, onApiKeySaved }: Se
       return;
     }
 
+    // Validate active provider is still connected and ready
+    // This handles the case where the active provider was removed
+    if (settings.activeProviderId) {
+      const activeProvider = settings.connectedProviders[settings.activeProviderId];
+      if (!isProviderReady(activeProvider)) {
+        // Active provider is no longer ready - find a ready provider to set as active
+        const readyProviderId = Object.keys(settings.connectedProviders).find(
+          (id) => isProviderReady(settings.connectedProviders[id as ProviderId])
+        ) as ProviderId | undefined;
+        if (readyProviderId) {
+          setActiveProvider(readyProviderId);
+        }
+      }
+    } else {
+      // No active provider set - auto-select first ready provider
+      const readyProviderId = Object.keys(settings.connectedProviders).find(
+        (id) => isProviderReady(settings.connectedProviders[id as ProviderId])
+      ) as ProviderId | undefined;
+      if (readyProviderId) {
+        setActiveProvider(readyProviderId);
+      }
+    }
+
     onOpenChange(false);
-  }, [settings, selectedProvider, onOpenChange]);
+  }, [settings, selectedProvider, onOpenChange, setActiveProvider]);
 
   // Force close (dismiss warning)
   const handleForceClose = useCallback(() => {

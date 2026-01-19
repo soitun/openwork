@@ -570,6 +570,12 @@ export function registerIPCHandlers(): void {
       ? sanitizeString(existingTaskId, 'taskId', 128)
       : undefined;
 
+    // Check for ready provider before resuming session (skip in E2E mock mode)
+    // This is a backend safety check - the UI should also check before calling
+    if (!isMockTaskEventsEnabled() && !hasReadyProvider()) {
+      throw new Error('No provider is ready. Please connect a provider and select a model in Settings.');
+    }
+
     // Use existing task ID or create a new one
     const taskId = validatedExistingTaskId || createTaskId();
 

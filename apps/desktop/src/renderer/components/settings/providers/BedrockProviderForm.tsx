@@ -201,6 +201,40 @@ export function BedrockProviderForm({
           </>
         ) : (
           <>
+            {/* Display saved credentials info */}
+            <div className="space-y-3">
+              {(connectedProvider?.credentials as BedrockProviderCredentials)?.authMethod === 'accessKey' ? (
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-foreground">Access Key ID</label>
+                  <input
+                    type="text"
+                    value={(connectedProvider?.credentials as BedrockProviderCredentials)?.accessKeyIdPrefix || 'AKIA...'}
+                    disabled
+                    className="w-full rounded-md border border-input bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-foreground">AWS Profile</label>
+                  <input
+                    type="text"
+                    value={(connectedProvider?.credentials as BedrockProviderCredentials)?.profileName || 'default'}
+                    disabled
+                    className="w-full rounded-md border border-input bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground"
+                  />
+                </div>
+              )}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-foreground">Region</label>
+                <input
+                  type="text"
+                  value={(connectedProvider?.credentials as BedrockProviderCredentials)?.region || 'us-east-1'}
+                  disabled
+                  className="w-full rounded-md border border-input bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground"
+                />
+              </div>
+            </div>
+
             <ConnectedControls onDisconnect={onDisconnect} />
 
             {/* Model Selector */}

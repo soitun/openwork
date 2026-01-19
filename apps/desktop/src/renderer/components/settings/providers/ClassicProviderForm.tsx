@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { getAccomplish } from '@/lib/accomplish';
 import type { ProviderId, ConnectedProvider, ApiKeyCredentials } from '@accomplish/shared';
-import { PROVIDER_META, DEFAULT_PROVIDERS } from '@accomplish/shared';
+import { PROVIDER_META, DEFAULT_PROVIDERS, getDefaultModelForProvider } from '@accomplish/shared';
 import {
   ModelSelector,
   ConnectButton,
@@ -78,12 +78,15 @@ export function ClassicProviderForm({
       // Save the API key
       await accomplish.addApiKey(providerId as any, apiKey.trim());
 
+      // Get default model for this provider (if one exists)
+      const defaultModel = getDefaultModelForProvider(providerId);
+
       // Create connected provider - store longer key prefix for display
       const trimmedKey = apiKey.trim();
       const provider: ConnectedProvider = {
         providerId,
         connectionStatus: 'connected',
-        selectedModelId: null,
+        selectedModelId: defaultModel, // Auto-select default model for main providers
         credentials: {
           type: 'api_key',
           keyPrefix: trimmedKey.length > 40

@@ -116,6 +116,30 @@ export function LiteLLMProviderForm({
           </>
         ) : (
           <>
+            {/* Display saved connection details */}
+            <div className="space-y-3">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-foreground">Server URL</label>
+                <input
+                  type="text"
+                  value={(connectedProvider?.credentials as LiteLLMCredentials)?.serverUrl || 'http://localhost:4000'}
+                  disabled
+                  className="w-full rounded-md border border-input bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground"
+                />
+              </div>
+              {(connectedProvider?.credentials as LiteLLMCredentials)?.hasApiKey && (
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-foreground">API Key</label>
+                  <input
+                    type="text"
+                    value={(connectedProvider?.credentials as LiteLLMCredentials)?.keyPrefix || 'API key saved'}
+                    disabled
+                    className="w-full rounded-md border border-input bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground"
+                  />
+                </div>
+              )}
+            </div>
+
             <ConnectedControls onDisconnect={onDisconnect} />
 
             {/* Model Selector */}
