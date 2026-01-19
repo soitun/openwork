@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { analytics } from '@/lib/analytics';
+import { getAccomplish } from '@/lib/accomplish';
 import {
   Dialog,
   DialogContent,
@@ -36,15 +37,20 @@ export default function SettingsDialog({ open, onOpenChange, onApiKeySaved }: Se
     connectProvider,
     disconnectProvider,
     updateModel,
-    setDebugMode,
     refetch,
   } = useProviderSettings();
 
-  // Refetch settings when dialog opens
+  // Debug mode state - stored in appSettings, not providerSettings
+  const [debugMode, setDebugModeState] = useState(false);
+  const accomplish = getAccomplish();
+
+  // Refetch settings and debug mode when dialog opens
   useEffect(() => {
     if (!open) return;
     refetch();
-  }, [open, refetch]);
+    // Load debug mode from appSettings (correct store)
+    accomplish.getDebugMode().then(setDebugModeState);
+  }, [open, refetch, accomplish]);
 
   // Auto-expand grid if active provider is not in the first 3 visible providers
   useEffect(() => {
@@ -144,12 +150,13 @@ export default function SettingsDialog({ open, onOpenChange, onApiKeySaved }: Se
     onApiKeySaved?.();
   }, [selectedProvider, updateModel, settings, setActiveProvider, onApiKeySaved]);
 
-  // Handle debug mode toggle
+  // Handle debug mode toggle - writes to appSettings (correct store)
   const handleDebugToggle = useCallback(async () => {
-    const newValue = !settings?.debugMode;
-    await setDebugMode(newValue);
+    const newValue = !debugMode;
+    await accomplish.setDebugMode(newValue);
+    setDebugModeState(newValue);
     analytics.trackToggleDebugMode(newValue);
-  }, [settings?.debugMode, setDebugMode]);
+  }, [debugMode, accomplish]);
 
   // Handle done button (close with validation)
   const handleDone = useCallback(() => {
@@ -290,17 +297,17 @@ export default function SettingsDialog({ open, onOpenChange, onApiKeySaved }: Se
                   <button
                     data-testid="settings-debug-toggle"
                     onClick={handleDebugToggle}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ease-accomplish ${settings.debugMode ? 'bg-primary' : 'bg-muted'
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ease-accomplish ${debugMode ? 'bg-primary' : 'bg-muted'
                       }`}
                   >
                     <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ease-accomplish ${settings.debugMode ? 'translate-x-6' : 'translate-x-1'
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ease-accomplish ${debugMode ? 'translate-x-6' : 'translate-x-1'
                         }`}
                     />
                   </button>
                 </div>
               </div>
-              {settings.debugMode && (
+              {debugMode && (
                 <div className="mt-4 rounded-xl bg-warning/10 p-3.5">
                   <p className="text-sm text-warning">
                     Debug mode is enabled. Backend logs will appear in the task view

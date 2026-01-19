@@ -1017,7 +1017,7 @@ export default function ExecutionPage() {
 
       {/* Debug Panel - Only visible when debug mode is enabled */}
       {debugModeEnabled && (
-        <div className="flex-shrink-0 border-t border-border">
+        <div className="flex-shrink-0 border-t border-border" data-testid="debug-panel">
           {/* Toggle header */}
           <button
             onClick={() => setDebugPanelOpen(!debugPanelOpen)}

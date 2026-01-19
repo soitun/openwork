@@ -52,14 +52,20 @@ export function ProviderCard({
   const providerReady = isProviderReady(connectedProvider);
   const logoSrc = PROVIDER_LOGOS[providerId];
 
+  // Green background should ONLY show for the active provider that is ready (connected + model selected)
+  // isSelected just means the card is clicked for viewing settings - it should only get a border, not green background
+  const showGreenBackground = isActive && providerReady;
+
   return (
     <button
       onClick={onClick}
       data-testid={`provider-card-${providerId}`}
       className={`relative flex flex-col items-center justify-center rounded-xl border p-4 transition-all duration-200 min-w-[120px] ${
-        isActive || isSelected
+        showGreenBackground
           ? 'border-[#4a4330] border-2 bg-[#e9f7e7]'
-          : 'border-border bg-[#f9f8f6] hover:border-ring'
+          : isSelected
+            ? 'border-[#4a4330] border-2 bg-[#f9f8f6]'
+            : 'border-border bg-[#f9f8f6] hover:border-ring'
       }`}
     >
       {/* Connection status badge */}

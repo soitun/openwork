@@ -605,4 +605,137 @@ test.describe('Settings Dialog', () => {
     );
   });
 
+  /**
+   * Bug test: Green background should only show on active+ready provider
+   *
+   * Bug: Both isActive and isSelected were getting the same green background.
+   * Expected: Green background should ONLY show on the active provider that is
+   * connected AND has a model selected (isProviderReady). When clicking another
+   * provider to view its settings, it should NOT get the green background.
+   *
+   * In the E2E test environment, no provider is connected/ready, so we test that
+   * clicking to select a provider does NOT give it the green background.
+   */
+  test('should only show green background on active ready provider, not on selected provider', async ({ window }) => {
+    const settingsPage = new SettingsPage(window);
+
+    await window.waitForLoadState('domcontentloaded');
+    await settingsPage.navigateToSettings();
+
+    // Click Show All to see all providers including Z-AI
+    await settingsPage.toggleShowAll();
+
+    // Define color constants
+    const GREEN_BACKGROUND = 'rgb(233, 247, 231)'; // #e9f7e7 - for active+ready providers only
+    const DEFAULT_BACKGROUND = 'rgb(249, 248, 246)'; // #f9f8f6 - for unselected providers
+
+    // Get the Anthropic card
+    const anthropicCard = settingsPage.getProviderCard('anthropic');
+    await expect(anthropicCard).toBeVisible({ timeout: TEST_TIMEOUTS.NAVIGATION });
+
+    // In E2E test environment, no provider is active+ready, so Anthropic should have default bg
+    const anthropicBgBefore = await anthropicCard.evaluate((el) => {
+      return window.getComputedStyle(el).backgroundColor;
+    });
+    expect(anthropicBgBefore).toBe(DEFAULT_BACKGROUND);
+
+    // Get the Z-AI card
+    const zaiCard = settingsPage.getProviderCard('zai');
+    await expect(zaiCard).toBeVisible();
+
+    // Verify Z-AI has the default background before clicking
+    const zaiBgBefore = await zaiCard.evaluate((el) => {
+      return window.getComputedStyle(el).backgroundColor;
+    });
+    expect(zaiBgBefore).toBe(DEFAULT_BACKGROUND);
+
+    // Click on Z-AI to select it (but it's not connected/ready)
+    await settingsPage.selectProvider('zai');
+
+    // BUG TEST: Z-AI should NOT have the green background after being selected
+    // The bug was that isSelected triggered the green background, which is incorrect.
+    // Green background should ONLY appear for active+ready providers (isActive && isProviderReady).
+    // A selected-but-not-ready provider should only get a selection border, not green background.
+    const zaiBgAfter = await zaiCard.evaluate((el) => {
+      return window.getComputedStyle(el).backgroundColor;
+    });
+
+    // This assertion will FAIL if the bug exists (zai gets green background when selected)
+    // and PASS once the bug is fixed (zai keeps default background when selected)
+    expect(zaiBgAfter).toBe(DEFAULT_BACKGROUND);
+
+    // Capture for verification
+    await captureForAI(
+      window,
+      'settings-dialog',
+      'green-background-bug-test',
+      [
+        'Selected but non-ready provider does not have green background',
+        'Bug is fixed - isSelected does not trigger green background',
+        'Only active+ready providers should have green background'
+      ]
+    );
+  });
+
+  test('should enable debug mode and show debug panel on execution page', async ({ window }) => {
+    const homePage = new HomePage(window);
+    const settingsPage = new SettingsPage(window);
+
+    await window.waitForLoadState('domcontentloaded');
+
+    // Step 1: Open settings and toggle debug mode
+    await settingsPage.navigateToSettings();
+    await expect(settingsPage.debugModeToggle).toBeVisible({ timeout: TEST_TIMEOUTS.NAVIGATION });
+
+    const toggleButton = settingsPage.debugModeToggle;
+
+    // Check current state of toggle and ensure it's ON for the test
+    const initialBgClass = await toggleButton.getAttribute('class');
+    const isInitiallyOff = initialBgClass?.includes('bg-muted');
+
+    if (isInitiallyOff) {
+      // Click to enable debug mode
+      await settingsPage.toggleDebugMode();
+    }
+
+    // Verify toggle is now in ON state
+    await expect(toggleButton).toHaveClass(/bg-primary/);
+
+    // Verify warning message appears when debug is enabled
+    const warningMessage = window.getByText('Debug mode is enabled');
+    await expect(warningMessage).toBeVisible();
+
+    // Step 2: Close settings (force close since no provider is set up)
+    await settingsPage.pressEscapeToClose();
+    // If warning appears, click Close Anyway
+    const closeAnyway = settingsPage.closeAnywayButton;
+    if (await closeAnyway.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await closeAnyway.click();
+    }
+
+    // Step 3: Start a task
+    await homePage.enterTask(TEST_SCENARIOS.SUCCESS.keyword);
+    await homePage.submitTask();
+
+    // Step 4: Wait for navigation to execution page
+    await window.waitForURL(/.*#\/execution.*/, { timeout: TEST_TIMEOUTS.NAVIGATION });
+
+    // Step 5: Verify debug panel is visible on execution page
+    // This is the key assertion - debug mode toggle in settings should affect execution page
+    const debugPanel = window.getByTestId('debug-panel');
+    await expect(debugPanel).toBeVisible({ timeout: TEST_TIMEOUTS.NAVIGATION });
+
+    // Capture the debug panel
+    await captureForAI(
+      window,
+      'execution-page',
+      'debug-panel-enabled',
+      [
+        'Debug panel is visible at bottom of execution page',
+        'Debug mode was successfully enabled in settings',
+        'Panel shows Debug Logs header'
+      ]
+    );
+  });
+
 });
