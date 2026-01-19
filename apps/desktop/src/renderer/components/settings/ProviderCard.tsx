@@ -55,7 +55,7 @@ export function ProviderCard({
       onClick={onClick}
       data-testid={`provider-card-${providerId}`}
       className={`relative flex flex-col items-center justify-center rounded-xl border p-4 transition-all duration-200 min-w-[120px] ${
-        isSelected
+        isActive || isSelected
           ? 'border-[#4A7C59] border-2 bg-[#D4E8D5]'
           : 'border-border bg-white hover:border-ring'
       }`}
