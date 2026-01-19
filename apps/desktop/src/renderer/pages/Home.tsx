@@ -117,11 +117,14 @@ export default function HomePage() {
   const handleSubmit = async () => {
     if (!prompt.trim() || isLoading) return;
 
-    // Check if any provider is ready before sending
-    const settings = await accomplish.getProviderSettings();
-    if (!hasAnyReadyProvider(settings)) {
-      setShowSettingsDialog(true);
-      return;
+    // Check if any provider is ready before sending (skip in E2E mode)
+    const isE2EMode = await accomplish.isE2EMode();
+    if (!isE2EMode) {
+      const settings = await accomplish.getProviderSettings();
+      if (!hasAnyReadyProvider(settings)) {
+        setShowSettingsDialog(true);
+        return;
+      }
     }
 
     await executeTask();

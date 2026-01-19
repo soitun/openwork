@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getAccomplish } from '@/lib/accomplish';
 import { analytics } from '@/lib/analytics';
 import {
   Dialog,
@@ -14,7 +13,6 @@ import { hasAnyReadyProvider, isProviderReady } from '@accomplish/shared';
 import { useProviderSettings } from '@/components/settings/hooks/useProviderSettings';
 import { ProviderGrid } from '@/components/settings/ProviderGrid';
 import { ProviderSettingsPanel } from '@/components/settings/ProviderSettingsPanel';
-import logoImage from '/assets/logo.png';
 
 interface SettingsDialogProps {
   open: boolean;
@@ -23,7 +21,6 @@ interface SettingsDialogProps {
 }
 
 export default function SettingsDialog({ open, onOpenChange, onApiKeySaved }: SettingsDialogProps) {
-  const [appVersion, setAppVersion] = useState('');
   const [selectedProvider, setSelectedProvider] = useState<ProviderId | null>(null);
   const [gridExpanded, setGridExpanded] = useState(false);
   const [closeWarning, setCloseWarning] = useState(false);
@@ -40,21 +37,9 @@ export default function SettingsDialog({ open, onOpenChange, onApiKeySaved }: Se
     refetch,
   } = useProviderSettings();
 
-  // Fetch app version on dialog open
+  // Refetch settings when dialog opens
   useEffect(() => {
     if (!open) return;
-
-    const fetchVersion = async () => {
-      try {
-        const accomplish = getAccomplish();
-        const version = await accomplish.getVersion();
-        setAppVersion(version);
-      } catch (err) {
-        console.error('Failed to fetch version:', err);
-      }
-    };
-
-    fetchVersion();
     refetch();
   }, [open, refetch]);
 
@@ -85,7 +70,7 @@ export default function SettingsDialog({ open, onOpenChange, onApiKeySaved }: Se
   // Handle provider selection
   const handleSelectProvider = useCallback((providerId: ProviderId) => {
     setSelectedProvider(providerId);
-    setGridExpanded(true);
+    // Don't auto-expand grid - just show settings panel for selected provider
     setCloseWarning(false);
     setShowModelError(false);
   }, []);
@@ -168,7 +153,7 @@ export default function SettingsDialog({ open, onOpenChange, onApiKeySaved }: Se
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="settings-dialog">
           <DialogHeader>
-            <DialogTitle>Settings</DialogTitle>
+            <DialogTitle>Set up Openwork</DialogTitle>
           </DialogHeader>
           <div className="flex items-center justify-center py-12">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -182,7 +167,7 @@ export default function SettingsDialog({ open, onOpenChange, onApiKeySaved }: Se
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="settings-dialog">
         <DialogHeader>
-          <DialogTitle>Settings</DialogTitle>
+          <DialogTitle>Set up Openwork</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6 mt-4">
@@ -222,12 +207,12 @@ export default function SettingsDialog({ open, onOpenChange, onApiKeySaved }: Se
             />
           </section>
 
-          {/* Provider Settings Panel (shown when a provider is selected and grid is expanded) */}
-          {selectedProvider && gridExpanded && (
+          {/* Provider Settings Panel (shown when a provider is selected) */}
+          {selectedProvider && (
             <section>
               <ProviderSettingsPanel
                 providerId={selectedProvider}
-                connectedProvider={settings.connectedProviders[selectedProvider]}
+                connectedProvider={settings?.connectedProviders?.[selectedProvider]}
                 onConnect={handleConnect}
                 onDisconnect={handleDisconnect}
                 onModelChange={handleModelChange}
@@ -236,20 +221,8 @@ export default function SettingsDialog({ open, onOpenChange, onApiKeySaved }: Se
             </section>
           )}
 
-          {/* Done Button */}
-          <div className="flex justify-end">
-            <button
-              onClick={handleDone}
-              className="rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              data-testid="settings-done-button"
-            >
-              Done
-            </button>
-          </div>
-
-          {/* Developer Section */}
+          {/* Debug Mode Section */}
           <section>
-            <h2 className="mb-4 text-base font-medium text-foreground">Developer</h2>
             <div className="rounded-lg border border-border bg-card p-5">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
@@ -284,29 +257,19 @@ export default function SettingsDialog({ open, onOpenChange, onApiKeySaved }: Se
             </div>
           </section>
 
-          {/* About Section */}
-          <section>
-            <h2 className="mb-4 text-base font-medium text-foreground">About</h2>
-            <div className="rounded-lg border border-border bg-card p-5">
-              <div className="flex items-center gap-4">
-                <img
-                  src={logoImage}
-                  alt="Openwork"
-                  className="h-12 w-12 rounded-xl"
-                />
-                <div>
-                  <div className="font-medium text-foreground">Openwork</div>
-                  <div className="text-sm text-muted-foreground">Version {appVersion || 'Error: unavailable'}</div>
-                </div>
-              </div>
-              <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
-                Openwork is a local computer-use AI agent for your Mac that reads your files, creates documents, and automates repetitive knowledge work—all open-source with your AI models of choice.
-              </p>
-              <p className="mt-3 text-sm text-muted-foreground">
-                Any questions or feedback? <a href="mailto:openwork-support@accomplish.ai" className="text-primary hover:underline">Click here to contact us</a>.
-              </p>
-            </div>
-          </section>
+          {/* Done Button */}
+          <div className="flex justify-end">
+            <button
+              onClick={handleDone}
+              className="flex items-center gap-2 rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              data-testid="settings-done-button"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Done
+            </button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

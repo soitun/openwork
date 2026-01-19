@@ -16,9 +16,9 @@ const providerSettingsStore = new Store<ProviderSettings>({
 
 export function getProviderSettings(): ProviderSettings {
   return {
-    activeProviderId: providerSettingsStore.get('activeProviderId'),
-    connectedProviders: providerSettingsStore.get('connectedProviders'),
-    debugMode: providerSettingsStore.get('debugMode'),
+    activeProviderId: providerSettingsStore.get('activeProviderId') ?? null,
+    connectedProviders: providerSettingsStore.get('connectedProviders') ?? {},
+    debugMode: providerSettingsStore.get('debugMode') ?? false,
   };
 }
 

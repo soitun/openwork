@@ -95,11 +95,12 @@ export function isProviderReady(provider: ConnectedProvider | undefined): boolea
   return provider.connectionStatus === 'connected' && provider.selectedModelId !== null;
 }
 
-export function hasAnyReadyProvider(settings: ProviderSettings): boolean {
+export function hasAnyReadyProvider(settings: ProviderSettings | null | undefined): boolean {
+  if (!settings?.connectedProviders) return false;
   return Object.values(settings.connectedProviders).some(isProviderReady);
 }
 
-export function getActiveProvider(settings: ProviderSettings): ConnectedProvider | null {
-  if (!settings.activeProviderId) return null;
-  return settings.connectedProviders[settings.activeProviderId] ?? null;
+export function getActiveProvider(settings: ProviderSettings | null | undefined): ConnectedProvider | null {
+  if (!settings?.activeProviderId) return null;
+  return settings.connectedProviders?.[settings.activeProviderId] ?? null;
 }

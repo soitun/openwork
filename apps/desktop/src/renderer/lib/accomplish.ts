@@ -112,6 +112,9 @@ interface AccomplishAPI {
   saveBedrockCredentials(credentials: string): Promise<ApiKeyConfig>;
   getBedrockCredentials(): Promise<BedrockCredentials | null>;
 
+  // E2E Testing
+  isE2EMode(): Promise<boolean>;
+
   // Provider Settings API
   getProviderSettings(): Promise<ProviderSettings>;
   setActiveProvider(providerId: ProviderId | null): Promise<void>;

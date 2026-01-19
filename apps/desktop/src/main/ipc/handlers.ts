@@ -303,9 +303,9 @@ export function registerIPCHandlers(): void {
     const sender = event.sender;
     const validatedConfig = validateTaskConfig(config);
 
-    // Check for ready provider before starting task
+    // Check for ready provider before starting task (skip in E2E mock mode)
     // This is a backend safety check - the UI should also check before calling
-    if (!hasReadyProvider()) {
+    if (!isMockTaskEventsEnabled() && !hasReadyProvider()) {
       throw new Error('No provider is ready. Please connect a provider and select a model in Settings.');
     }
 

@@ -44,8 +44,6 @@ export function ProviderGrid({
     });
   }, [search]);
 
-  const displayedProviders = expanded ? filteredProviders : filteredProviders.slice(0, 6);
-
   return (
     <div className="rounded-xl border border-border bg-card p-4" data-testid="provider-grid">
       {/* Header */}
@@ -76,25 +74,43 @@ export function ProviderGrid({
         </div>
       </div>
 
-      {/* Grid */}
-      <div className={`grid gap-3 ${expanded ? 'grid-cols-3' : 'grid-cols-6'}`}>
-        {displayedProviders.map(providerId => (
-          <ProviderCard
-            key={providerId}
-            providerId={providerId}
-            connectedProvider={settings.connectedProviders[providerId]}
-            isActive={settings.activeProviderId === providerId}
-            isSelected={selectedProvider === providerId}
-            onClick={() => onSelectProvider(providerId)}
-          />
-        ))}
-      </div>
+      {/* Providers */}
+      {expanded ? (
+        /* Expanded: show all in grid */
+        <div className="grid grid-cols-4 gap-3">
+          {filteredProviders.map(providerId => (
+            <ProviderCard
+              key={providerId}
+              providerId={providerId}
+              connectedProvider={settings?.connectedProviders?.[providerId]}
+              isActive={settings?.activeProviderId === providerId}
+              isSelected={selectedProvider === providerId}
+              onClick={() => onSelectProvider(providerId)}
+            />
+          ))}
+        </div>
+      ) : (
+        /* Collapsed: single row, 4 providers */
+        <div className="grid grid-cols-4 gap-3">
+          {filteredProviders.slice(0, 4).map(providerId => (
+            <ProviderCard
+              key={providerId}
+              providerId={providerId}
+              connectedProvider={settings?.connectedProviders?.[providerId]}
+              isActive={settings?.activeProviderId === providerId}
+              isSelected={selectedProvider === providerId}
+              onClick={() => onSelectProvider(providerId)}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Show All / Hide toggle */}
-      <div className="mt-4 text-center">
+      <div className="mt-4 text-center border-t border-border pt-3">
         <button
           onClick={onToggleExpanded}
-          className="text-sm text-muted-foreground hover:text-foreground"
+          className="text-sm text-muted-foreground hover:text-foreground font-medium"
+          data-testid="show-all-toggle"
         >
           {expanded ? 'Hide' : 'Show All'}
         </button>

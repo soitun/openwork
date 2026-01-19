@@ -1,7 +1,32 @@
 // apps/desktop/src/renderer/components/settings/ProviderCard.tsx
 
 import type { ProviderId, ConnectedProvider } from '@accomplish/shared';
-import { PROVIDER_META, isProviderReady } from '@accomplish/shared';
+import { PROVIDER_META } from '@accomplish/shared';
+
+// Import provider logos
+import anthropicLogo from '/assets/ai-logos/anthropic.svg';
+import openaiLogo from '/assets/ai-logos/openai.svg';
+import googleLogo from '/assets/ai-logos/google.svg';
+import xaiLogo from '/assets/ai-logos/xai.svg';
+import deepseekLogo from '/assets/ai-logos/deepseek.svg';
+import zaiLogo from '/assets/ai-logos/zai.svg';
+import bedrockLogo from '/assets/ai-logos/bedrock.svg';
+import ollamaLogo from '/assets/ai-logos/ollama.svg';
+import openrouterLogo from '/assets/ai-logos/openrouter.svg';
+import litellmLogo from '/assets/ai-logos/litellm.svg';
+
+const PROVIDER_LOGOS: Record<ProviderId, string> = {
+  anthropic: anthropicLogo,
+  openai: openaiLogo,
+  google: googleLogo,
+  xai: xaiLogo,
+  deepseek: deepseekLogo,
+  zai: zaiLogo,
+  bedrock: bedrockLogo,
+  ollama: ollamaLogo,
+  openrouter: openrouterLogo,
+  litellm: litellmLogo,
+};
 
 interface ProviderCardProps {
   providerId: ProviderId;
@@ -20,6 +45,7 @@ export function ProviderCard({
 }: ProviderCardProps) {
   const meta = PROVIDER_META[providerId];
   const isConnected = connectedProvider?.connectionStatus === 'connected';
+  const logoSrc = PROVIDER_LOGOS[providerId];
 
   return (
     <button
@@ -42,11 +68,13 @@ export function ProviderCard({
         </div>
       )}
 
-      {/* Logo placeholder - shows first letter */}
+      {/* Provider Logo */}
       <div className="mb-2 h-10 w-10 flex items-center justify-center">
-        <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center text-lg font-bold">
-          {meta.name.charAt(0)}
-        </div>
+        <img
+          src={logoSrc}
+          alt={`${meta.name} logo`}
+          className="h-8 w-8 object-contain"
+        />
       </div>
 
       {/* Name */}

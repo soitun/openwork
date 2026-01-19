@@ -144,6 +144,10 @@ const accomplishAPI = {
   getBedrockCredentials: () =>
     ipcRenderer.invoke('bedrock:get-credentials'),
 
+  // E2E Testing
+  isE2EMode: (): Promise<boolean> =>
+    ipcRenderer.invoke('app:is-e2e-mode'),
+
   // New Provider Settings API
   getProviderSettings: (): Promise<unknown> =>
     ipcRenderer.invoke('provider-settings:get'),

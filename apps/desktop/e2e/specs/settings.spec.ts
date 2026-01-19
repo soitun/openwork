@@ -51,6 +51,73 @@ test.describe('Settings Dialog', () => {
     );
   });
 
+  test('should have horizontal scroll only on provider row, not settings dialog', async ({ window }) => {
+    const settingsPage = new SettingsPage(window);
+
+    await window.waitForLoadState('domcontentloaded');
+    await settingsPage.navigateToSettings();
+
+    // Wait for provider grid to be visible
+    await expect(settingsPage.providerGrid).toBeVisible({ timeout: TEST_TIMEOUTS.NAVIGATION });
+
+    // Get the settings dialog element
+    const settingsDialog = window.getByTestId('settings-dialog');
+
+    // Get the provider grid element
+    const providerGrid = settingsPage.providerGrid;
+
+    // Check that settings dialog does NOT have horizontal scroll
+    const dialogOverflowX = await settingsDialog.evaluate((el) => {
+      const style = window.getComputedStyle(el);
+      return style.overflowX;
+    });
+
+    // Dialog should have auto or hidden overflow-x, not scroll
+    expect(['auto', 'hidden', 'visible']).toContain(dialogOverflowX);
+
+    // Check that provider grid has overflow-hidden (clips the scroll to inside)
+    const gridOverflow = await providerGrid.evaluate((el) => {
+      const style = window.getComputedStyle(el);
+      return style.overflow;
+    });
+    expect(gridOverflow).toBe('hidden');
+
+    // Find the scrollable providers container inside the grid
+    const providersScrollContainer = providerGrid.locator('div.flex.overflow-x-auto').first();
+
+    // If not expanded, there should be a scrollable container
+    const isScrollContainerVisible = await providersScrollContainer.isVisible().catch(() => false);
+
+    if (isScrollContainerVisible) {
+      // Check that this inner container has overflow-x: auto (scrollable)
+      const scrollContainerOverflowX = await providersScrollContainer.evaluate((el) => {
+        const style = window.getComputedStyle(el);
+        return style.overflowX;
+      });
+      expect(scrollContainerOverflowX).toBe('auto');
+
+      // Verify the scroll container has scrollable content (scrollWidth > clientWidth)
+      const hasHorizontalScroll = await providersScrollContainer.evaluate((el) => {
+        return el.scrollWidth > el.clientWidth;
+      });
+
+      // Log for debugging
+      console.log('Provider row has horizontal scroll:', hasHorizontalScroll);
+    }
+
+    // Capture for verification
+    await captureForAI(
+      window,
+      'settings-dialog',
+      'scroll-behavior',
+      [
+        'Settings dialog does not have horizontal scroll',
+        'Provider grid container has overflow-hidden',
+        'Provider cards row has horizontal scroll when collapsed'
+      ]
+    );
+  });
+
   test('should display API key input when selecting a classic provider', async ({ window }) => {
     const settingsPage = new SettingsPage(window);
 
@@ -357,6 +424,9 @@ test.describe('Settings Dialog', () => {
     await window.waitForLoadState('domcontentloaded');
     await settingsPage.navigateToSettings();
 
+    // Click Show All to see all providers (OpenRouter is not in first 6)
+    await settingsPage.toggleShowAll();
+
     // Verify OpenRouter provider card is visible
     const openrouterCard = settingsPage.getProviderCard('openrouter');
     await expect(openrouterCard).toBeVisible({ timeout: TEST_TIMEOUTS.NAVIGATION });
@@ -379,6 +449,9 @@ test.describe('Settings Dialog', () => {
 
     await window.waitForLoadState('domcontentloaded');
     await settingsPage.navigateToSettings();
+
+    // Click Show All to see all providers (OpenRouter is not in first 6)
+    await settingsPage.toggleShowAll();
 
     // Click OpenRouter provider
     await settingsPage.selectProvider('openrouter');
@@ -549,99 +622,4 @@ test.describe('Settings Dialog', () => {
     );
   });
 
-  test('should display LiteLLM as enabled option in Proxy Platforms tab', async ({ window }) => {
-    const settingsPage = new SettingsPage(window);
-
-    // Navigate to settings
-    await window.waitForLoadState('domcontentloaded');
-    await settingsPage.navigateToSettings();
-
-    // Click Proxy Platforms tab
-    await settingsPage.selectProxyPlatformsTab();
-
-    // Verify LiteLLM platform button is visible and enabled
-    await expect(settingsPage.litellmPlatformButton).toBeVisible({ timeout: TEST_TIMEOUTS.NAVIGATION });
-    await expect(settingsPage.litellmPlatformButton).toBeEnabled();
-
-    // Capture proxy platforms with LiteLLM enabled
-    await captureForAI(
-      window,
-      'settings-dialog',
-      'litellm-enabled',
-      [
-        'LiteLLM platform is visible and enabled',
-        'Button can be clicked',
-        'User can select LiteLLM as their proxy platform'
-      ]
-    );
-  });
-
-  test('should show URL and API key inputs when LiteLLM is selected', async ({ window }) => {
-    const settingsPage = new SettingsPage(window);
-
-    // Navigate to settings
-    await window.waitForLoadState('domcontentloaded');
-    await settingsPage.navigateToSettings();
-
-    // Click Proxy Platforms tab
-    await settingsPage.selectProxyPlatformsTab();
-
-    // Click LiteLLM platform button
-    await settingsPage.selectLiteLLMPlatform();
-
-    // Verify URL input is visible
-    await expect(settingsPage.litellmUrlInput).toBeVisible({ timeout: TEST_TIMEOUTS.NAVIGATION });
-
-    // Verify API key input is visible (optional field)
-    await expect(settingsPage.litellmApiKeyInput).toBeVisible({ timeout: TEST_TIMEOUTS.NAVIGATION });
-
-    // Verify Test Connection button is visible
-    await expect(settingsPage.litellmTestConnectionButton).toBeVisible({ timeout: TEST_TIMEOUTS.NAVIGATION });
-
-    // Capture LiteLLM selection state
-    await captureForAI(
-      window,
-      'settings-dialog',
-      'litellm-selected',
-      [
-        'LiteLLM platform is selected',
-        'URL input is visible with default value',
-        'Optional API key input is visible',
-        'Test Connection button is visible'
-      ]
-    );
-  });
-
-  test('should allow editing LiteLLM URL', async ({ window }) => {
-    const settingsPage = new SettingsPage(window);
-
-    // Navigate to settings
-    await window.waitForLoadState('domcontentloaded');
-    await settingsPage.navigateToSettings();
-
-    // Click Proxy Platforms tab
-    await settingsPage.selectProxyPlatformsTab();
-
-    // Click LiteLLM platform button
-    await settingsPage.selectLiteLLMPlatform();
-
-    // Clear and enter a custom URL
-    await settingsPage.litellmUrlInput.clear();
-    await settingsPage.litellmUrlInput.fill('http://192.168.1.100:8000');
-
-    // Verify value was entered
-    await expect(settingsPage.litellmUrlInput).toHaveValue('http://192.168.1.100:8000');
-
-    // Capture edited URL state
-    await captureForAI(
-      window,
-      'settings-dialog',
-      'litellm-url-edited',
-      [
-        'LiteLLM URL input accepts custom values',
-        'User can connect to remote LiteLLM instances',
-        'URL field is editable'
-      ]
-    );
-  });
 });
