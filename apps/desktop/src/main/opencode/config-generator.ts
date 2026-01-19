@@ -182,11 +182,13 @@ Browser automation using MCP tools. Use these tools directly for web automation 
 - Returns YAML with element refs like [ref=e5]
 - Use these refs with browser_click and browser_type
 
-**browser_click(position?, x?, y?, ref?, selector?, page_name?)** - Click on the page
+**browser_click(position?, x?, y?, ref?, selector?, button?, click_count?, page_name?)** - Click on the page
 - position: "center" or "center-lower" (use center-lower for canvas apps to avoid overlays)
 - x, y: Pixel coordinates
 - ref: Element ref from browser_snapshot
 - selector: CSS selector
+- button: "left" (default), "right" (context menu), "middle"
+- click_count: 2 for double-click, 3 for triple-click
 
 **browser_type(ref?, selector?, text, press_enter?, page_name?)** - Type into an input
 - ref: Element ref from browser_snapshot (preferred)
@@ -242,6 +244,18 @@ Browser automation using MCP tools. Use these tools directly for web automation 
 **browser_drag(source_*, target_*, page_name?)** - Drag and drop
 - Source: source_ref, source_selector, or source_x/source_y
 - Target: target_ref, target_selector, or target_x/target_y
+
+**browser_get_text(ref?, selector?, page_name?)** - Get element text/value
+- Returns text content or input value
+- Faster than full snapshot when you just need one element
+
+**browser_iframe(action, ref?, selector?, page_name?)** - Handle iframes
+- action: "enter" to access iframe content, "exit" to return to main page
+- After entering, use browser_snapshot to see iframe content
+
+**browser_tabs(action, index?, timeout?, page_name?)** - Manage tabs/popups
+- action: "list" | "switch" | "close" | "wait_for_new"
+- Use "wait_for_new" before clicking links that open popups
 </tools>
 
 <workflow>
@@ -317,7 +331,7 @@ See the ask-user-question skill for full documentation and examples.
 
 <behavior>
 - Use AskUserQuestion tool for clarifying questions before starting ambiguous tasks
-- Use MCP tools directly - browser_navigate, browser_snapshot, browser_click, browser_type, browser_keyboard, browser_screenshot, browser_scroll, browser_hover, browser_select, browser_wait, browser_file_upload, browser_drag, browser_sequence
+- Use MCP tools directly - browser_navigate, browser_snapshot, browser_click, browser_type, browser_keyboard, browser_screenshot, browser_scroll, browser_hover, browser_select, browser_wait, browser_file_upload, browser_drag, browser_get_text, browser_iframe, browser_tabs, browser_sequence
 
 **BROWSER ACTION VERBOSITY - Be descriptive about web interactions:**
 - Before each browser action, briefly explain what you're about to do in user terms

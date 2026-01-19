@@ -1097,6 +1097,8 @@ interface BrowserClickInput {
   x?: number;
   y?: number;
   position?: 'center' | 'center-lower';
+  button?: 'left' | 'right' | 'middle';
+  click_count?: number;
   page_name?: string;
 }
 
@@ -1199,6 +1201,26 @@ interface BrowserDragInput {
   page_name?: string;
 }
 
+interface BrowserGetTextInput {
+  ref?: string;
+  selector?: string;
+  page_name?: string;
+}
+
+interface BrowserIframeInput {
+  action: 'enter' | 'exit';
+  ref?: string;
+  selector?: string;
+  page_name?: string;
+}
+
+interface BrowserTabsInput {
+  action: 'list' | 'switch' | 'close' | 'wait_for_new';
+  index?: number;
+  timeout?: number;
+  page_name?: string;
+}
+
 // Create MCP server
 const server = new Server(
   { name: 'dev-browser-mcp', version: '1.0.0' },
@@ -1241,14 +1263,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: 'browser_click',
-      description: 'Click on the page. Use position="center-lower" for canvas apps (Google Docs, Sheets) to avoid UI overlays. Alternatively use x/y coordinates, ref from browser_snapshot, or CSS selector.',
+      description: 'Click on the page. Supports double-click (click_count=2) and right-click (button="right"). Use position="center-lower" for canvas apps.',
       inputSchema: {
         type: 'object',
         properties: {
           position: {
             type: 'string',
             enum: ['center', 'center-lower'],
-            description: '"center" clicks viewport center. "center-lower" clicks 2/3 down (preferred for Google Docs to avoid AI suggestions overlay).',
+            description: '"center" clicks viewport center. "center-lower" clicks 2/3 down (preferred for Google Docs).',
           },
           x: {
             type: 'number',
@@ -1265,6 +1287,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           selector: {
             type: 'string',
             description: 'CSS selector (e.g., "button.submit").',
+          },
+          button: {
+            type: 'string',
+            enum: ['left', 'right', 'middle'],
+            description: 'Mouse button to click (default: "left"). Use "right" for context menus.',
+          },
+          click_count: {
+            type: 'number',
+            description: 'Number of clicks (default: 1). Use 2 for double-click, 3 for triple-click.',
           },
           page_name: {
             type: 'string',
@@ -1617,6 +1648,81 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         },
       },
     },
+    {
+      name: 'browser_get_text',
+      description: 'Get text content or input value from an element. Faster than browser_snapshot when you just need one element\'s text.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          ref: {
+            type: 'string',
+            description: 'Element ref from browser_snapshot',
+          },
+          selector: {
+            type: 'string',
+            description: 'CSS selector',
+          },
+          page_name: {
+            type: 'string',
+            description: 'Optional page name (default: "main")',
+          },
+        },
+      },
+    },
+    {
+      name: 'browser_iframe',
+      description: 'Enter or exit an iframe to interact with its content.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          action: {
+            type: 'string',
+            enum: ['enter', 'exit'],
+            description: '"enter" to switch into an iframe, "exit" to return to main page',
+          },
+          ref: {
+            type: 'string',
+            description: 'Iframe element ref (for action="enter")',
+          },
+          selector: {
+            type: 'string',
+            description: 'Iframe CSS selector (for action="enter")',
+          },
+          page_name: {
+            type: 'string',
+            description: 'Optional page name (default: "main")',
+          },
+        },
+        required: ['action'],
+      },
+    },
+    {
+      name: 'browser_tabs',
+      description: 'Manage browser tabs/popups. Handle new windows that open from clicks.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          action: {
+            type: 'string',
+            enum: ['list', 'switch', 'close', 'wait_for_new'],
+            description: '"list" shows all tabs, "switch" to tab by index, "close" closes tab by index, "wait_for_new" waits for a popup',
+          },
+          index: {
+            type: 'number',
+            description: 'Tab index (0-based) for switch/close actions',
+          },
+          timeout: {
+            type: 'number',
+            description: 'Timeout in ms for wait_for_new (default: 5000)',
+          },
+          page_name: {
+            type: 'string',
+            description: 'Optional page name (default: "main")',
+          },
+        },
+        required: ['action'],
+      },
+    },
   ],
 }));
 
@@ -1691,8 +1797,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<CallToo
       }
 
       case 'browser_click': {
-        const { ref, selector, x, y, position, page_name } = args as BrowserClickInput;
+        const { ref, selector, x, y, position, button, click_count, page_name } = args as BrowserClickInput;
         const page = await getPage(page_name);
+
+        // Build click options
+        const clickOptions: { button?: 'left' | 'right' | 'middle'; clickCount?: number } = {};
+        if (button) clickOptions.button = button;
+        if (click_count) clickOptions.clickCount = click_count;
+
+        // Build description suffix for button/click_count
+        const descParts: string[] = [];
+        if (click_count === 2) descParts.push('double-click');
+        else if (click_count === 3) descParts.push('triple-click');
+        else if (click_count && click_count > 1) descParts.push(`${click_count}x click`);
+        if (button === 'right') descParts.push('right-click');
+        else if (button === 'middle') descParts.push('middle-click');
+        const clickDesc = descParts.length > 0 ? ` (${descParts.join(', ')})` : '';
 
         // Position-based click (e.g., center for canvas apps)
         if (position === 'center' || position === 'center-lower') {
@@ -1702,20 +1822,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<CallToo
           const clickY = position === 'center-lower'
             ? (viewport?.height || 720) * 2 / 3
             : (viewport?.height || 720) / 2;
-          await page.mouse.click(clickX, clickY);
+          await page.mouse.click(clickX, clickY, clickOptions);
           await waitForPageLoad(page);
           const positionName = position === 'center-lower' ? 'center-lower (2/3 down)' : 'center';
           return {
-            content: [{ type: 'text', text: `Clicked viewport ${positionName} (${Math.round(clickX)}, ${Math.round(clickY)})` }],
+            content: [{ type: 'text', text: `Clicked viewport ${positionName} (${Math.round(clickX)}, ${Math.round(clickY)})${clickDesc}` }],
           };
         }
 
         // Explicit x/y coordinates
         if (x !== undefined && y !== undefined) {
-          await page.mouse.click(x, y);
+          await page.mouse.click(x, y, clickOptions);
           await waitForPageLoad(page);
           return {
-            content: [{ type: 'text', text: `Clicked at coordinates (${x}, ${y})` }],
+            content: [{ type: 'text', text: `Clicked at coordinates (${x}, ${y})${clickDesc}` }],
           };
         } else if (ref) {
           const element = await selectSnapshotRef(page, ref);
@@ -1725,20 +1845,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<CallToo
               isError: true,
             };
           }
-          await element.click();
+          await element.click(clickOptions);
           await waitForPageLoad(page);
           return {
-            content: [{ type: 'text', text: `Clicked element [ref=${ref}]` }],
+            content: [{ type: 'text', text: `Clicked element [ref=${ref}]${clickDesc}` }],
           };
         } else if (selector) {
-          await page.click(selector);
+          await page.click(selector, clickOptions);
           await waitForPageLoad(page);
           return {
-            content: [{ type: 'text', text: `Clicked element matching "${selector}"` }],
+            content: [{ type: 'text', text: `Clicked element matching "${selector}"${clickDesc}` }],
           };
         } else {
           return {
-            content: [{ type: 'text', text: 'Error: Provide x/y coordinates, ref, or selector' }],
+            content: [{ type: 'text', text: 'Error: Provide x/y coordinates, ref, selector, or position' }],
             isError: true,
           };
         }
@@ -2411,6 +2531,199 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<CallToo
         const targetDesc = target_ref ? `[ref=${target_ref}]` : target_selector ? `"${target_selector}"` : `(${target_x}, ${target_y})`;
         return {
           content: [{ type: 'text', text: `Dragged from ${sourceDesc} to ${targetDesc}` }],
+        };
+      }
+
+      case 'browser_get_text': {
+        const { ref, selector, page_name } = args as BrowserGetTextInput;
+        const page = await getPage(page_name);
+
+        let element: ElementHandle | null = null;
+        let target: string;
+
+        if (ref) {
+          element = await selectSnapshotRef(page, ref);
+          target = `[ref=${ref}]`;
+          if (!element) {
+            return {
+              content: [{ type: 'text', text: `Error: Could not find element with ref "${ref}"` }],
+              isError: true,
+            };
+          }
+        } else if (selector) {
+          element = await page.$(selector);
+          target = `"${selector}"`;
+          if (!element) {
+            return {
+              content: [{ type: 'text', text: `Error: Could not find element matching "${selector}"` }],
+              isError: true,
+            };
+          }
+        } else {
+          return {
+            content: [{ type: 'text', text: 'Error: Provide ref or selector' }],
+            isError: true,
+          };
+        }
+
+        // Try to get input value first, then fall back to text content
+        const value = await element.evaluate((el) => {
+          if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+            return { type: 'value', text: el.value };
+          }
+          if (el instanceof HTMLSelectElement) {
+            return { type: 'value', text: el.options[el.selectedIndex]?.text || '' };
+          }
+          return { type: 'text', text: el.textContent || '' };
+        });
+
+        return {
+          content: [{ type: 'text', text: `${target} ${value.type}: "${value.text}"` }],
+        };
+      }
+
+      case 'browser_iframe': {
+        const { action, ref, selector, page_name } = args as BrowserIframeInput;
+        const page = await getPage(page_name);
+
+        if (action === 'enter') {
+          let frameElement: ElementHandle | null = null;
+
+          if (ref) {
+            frameElement = await selectSnapshotRef(page, ref);
+            if (!frameElement) {
+              return {
+                content: [{ type: 'text', text: `Error: Could not find iframe with ref "${ref}"` }],
+                isError: true,
+              };
+            }
+          } else if (selector) {
+            frameElement = await page.$(selector);
+            if (!frameElement) {
+              return {
+                content: [{ type: 'text', text: `Error: Could not find iframe matching "${selector}"` }],
+                isError: true,
+              };
+            }
+          } else {
+            return {
+              content: [{ type: 'text', text: 'Error: Provide ref or selector for the iframe' }],
+              isError: true,
+            };
+          }
+
+          const frame = await frameElement.contentFrame();
+          if (!frame) {
+            return {
+              content: [{ type: 'text', text: 'Error: Element is not an iframe or frame is not accessible' }],
+              isError: true,
+            };
+          }
+
+          // Store the frame reference for subsequent operations
+          // Note: In Playwright, we work with frames directly, not by "entering" them
+          // The frame URL is returned so the agent can use it for context
+          const frameUrl = frame.url();
+          return {
+            content: [{ type: 'text', text: `Entered iframe. Frame URL: ${frameUrl}\nNote: Use browser_evaluate with frame-aware selectors, or take a snapshot to see iframe content.` }],
+          };
+        } else if (action === 'exit') {
+          // In Playwright, there's no explicit "exit" - you just work with the main page again
+          return {
+            content: [{ type: 'text', text: 'Exited iframe. Now working with main page.' }],
+          };
+        }
+
+        return {
+          content: [{ type: 'text', text: `Error: Unknown iframe action "${action}"` }],
+          isError: true,
+        };
+      }
+
+      case 'browser_tabs': {
+        const { action, index, timeout, page_name } = args as BrowserTabsInput;
+        const b = await ensureConnected();
+
+        if (action === 'list') {
+          const allPages = b.contexts().flatMap((ctx) => ctx.pages());
+          const pageList = allPages.map((p, i) => `${i}: ${p.url()}`).join('\n');
+          return {
+            content: [{ type: 'text', text: `Open tabs (${allPages.length}):\n${pageList}` }],
+          };
+        }
+
+        if (action === 'switch') {
+          if (index === undefined) {
+            return {
+              content: [{ type: 'text', text: 'Error: index is required for switch action' }],
+              isError: true,
+            };
+          }
+          const allPages = b.contexts().flatMap((ctx) => ctx.pages());
+          if (index < 0 || index >= allPages.length) {
+            return {
+              content: [{ type: 'text', text: `Error: Invalid tab index ${index}. Valid range: 0-${allPages.length - 1}` }],
+              isError: true,
+            };
+          }
+          const targetPage = allPages[index]!;
+          await targetPage.bringToFront();
+          return {
+            content: [{ type: 'text', text: `Switched to tab ${index}: ${targetPage.url()}` }],
+          };
+        }
+
+        if (action === 'close') {
+          if (index === undefined) {
+            return {
+              content: [{ type: 'text', text: 'Error: index is required for close action' }],
+              isError: true,
+            };
+          }
+          const allPages = b.contexts().flatMap((ctx) => ctx.pages());
+          if (index < 0 || index >= allPages.length) {
+            return {
+              content: [{ type: 'text', text: `Error: Invalid tab index ${index}. Valid range: 0-${allPages.length - 1}` }],
+              isError: true,
+            };
+          }
+          const targetPage = allPages[index]!;
+          const closedUrl = targetPage.url();
+          await targetPage.close();
+          return {
+            content: [{ type: 'text', text: `Closed tab ${index}: ${closedUrl}` }],
+          };
+        }
+
+        if (action === 'wait_for_new') {
+          const waitTimeout = timeout || 5000;
+          const context = b.contexts()[0];
+          if (!context) {
+            return {
+              content: [{ type: 'text', text: 'Error: No browser context available' }],
+              isError: true,
+            };
+          }
+
+          try {
+            const newPage = await context.waitForEvent('page', { timeout: waitTimeout });
+            await newPage.waitForLoadState('domcontentloaded');
+            const allPages = context.pages();
+            const newIndex = allPages.indexOf(newPage);
+            return {
+              content: [{ type: 'text', text: `New tab opened at index ${newIndex}: ${newPage.url()}` }],
+            };
+          } catch {
+            return {
+              content: [{ type: 'text', text: `No new tab opened within ${waitTimeout}ms` }],
+              isError: true,
+            };
+          }
+        }
+
+        return {
+          content: [{ type: 'text', text: `Error: Unknown tabs action "${action}"` }],
+          isError: true,
         };
       }
 
