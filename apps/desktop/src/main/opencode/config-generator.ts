@@ -305,17 +305,11 @@ function buildAzureFoundryProviderConfig(
 ): AzureFoundryProviderConfig | null {
   const baseUrl = endpoint.replace(/\/$/, '');
 
-  // Extract resource name from URL if standard Azure OpenAI format
-  const resourceMatch = baseUrl.match(/https?:\/\/([^.]+)\.openai\.azure\.com/i);
-  const resourceName = resourceMatch ? resourceMatch[1] : undefined;
-
-  // Build options for @ai-sdk/azure provider
-  const azureOptions: AzureFoundryProviderConfig['options'] = {};
-  if (resourceName) {
-    azureOptions.resourceName = resourceName;
-  } else {
-    azureOptions.baseURL = baseUrl;
-  }
+  // Build options for @ai-sdk/openai-compatible provider
+  // Use baseURL with /openai/v1 - the SDK appends /chat/completions automatically
+  const azureOptions: AzureFoundryProviderConfig['options'] = {
+    baseURL: `${baseUrl}/openai/v1`,
+  };
 
   // Set API key or Entra ID token
   if (authMethod === 'api-key') {
@@ -331,7 +325,7 @@ function buildAzureFoundryProviderConfig(
   }
 
   return {
-    npm: '@ai-sdk/azure',
+    npm: '@ai-sdk/openai-compatible',
     name: 'Azure AI Foundry',
     options: azureOptions,
     models: {
