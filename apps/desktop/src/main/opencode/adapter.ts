@@ -635,6 +635,12 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
 
         console.log('[OpenCode Adapter] Tool call:', toolName);
 
+        // Track if complete_task was called
+        if (toolName === 'complete_task') {
+          this.completeTaskCalled = true;
+          console.log('[OpenCode Adapter] complete_task tool called');
+        }
+
         this.emit('tool-use', toolName, toolInput);
         this.emit('progress', {
           stage: 'tool-use',
@@ -653,6 +659,12 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
         const toolUseName = toolUseMessage.part.tool || 'unknown';
         const toolUseInput = toolUseMessage.part.state?.input;
         const toolUseOutput = toolUseMessage.part.state?.output || '';
+
+        // Track if complete_task was called
+        if (toolUseName === 'complete_task') {
+          this.completeTaskCalled = true;
+          console.log('[OpenCode Adapter] complete_task tool called (via tool_use)');
+        }
 
         // For models that don't emit text messages (like Gemini), emit the tool description
         // as a thinking message so users can see what the AI is doing
