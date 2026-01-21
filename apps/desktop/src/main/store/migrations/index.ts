@@ -8,9 +8,22 @@ export interface Migration {
   up: (db: Database) => void;
 }
 
-// Import migrations - will be added as we create them
-import './v001-initial';
-const migrations: Migration[] = [];
+// Import migrations
+import { migration as v001 } from './v001-initial';
+
+// Migrations array
+const migrations: Migration[] = [
+  v001,
+];
+
+/**
+ * Register a migration. Called by migration files.
+ * For future use if needed.
+ */
+export function registerMigration(migration: Migration): void {
+  migrations.push(migration);
+  migrations.sort((a, b) => a.version - b.version);
+}
 
 /**
  * Current schema version supported by this app.
@@ -96,14 +109,6 @@ export function runMigrations(db: Database): void {
   }
 
   console.log('[Migrations] All migrations complete');
-}
-
-/**
- * Register a migration. Called by migration files.
- */
-export function registerMigration(migration: Migration): void {
-  migrations.push(migration);
-  migrations.sort((a, b) => a.version - b.version);
 }
 
 // Re-export errors for convenience

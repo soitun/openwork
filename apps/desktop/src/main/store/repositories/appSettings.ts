@@ -96,14 +96,23 @@ export function setLiteLLMConfig(config: LiteLLMConfig | null): void {
   );
 }
 
+function safeParseJson<T>(json: string | null): T | null {
+  if (!json) return null;
+  try {
+    return JSON.parse(json) as T;
+  } catch {
+    return null;
+  }
+}
+
 export function getAppSettings(): AppSettings {
   const row = getRow();
   return {
     debugMode: row.debug_mode === 1,
     onboardingComplete: row.onboarding_complete === 1,
-    selectedModel: row.selected_model ? JSON.parse(row.selected_model) : null,
-    ollamaConfig: row.ollama_config ? JSON.parse(row.ollama_config) : null,
-    litellmConfig: row.litellm_config ? JSON.parse(row.litellm_config) : null,
+    selectedModel: safeParseJson<SelectedModel>(row.selected_model),
+    ollamaConfig: safeParseJson<OllamaConfig>(row.ollama_config),
+    litellmConfig: safeParseJson<LiteLLMConfig>(row.litellm_config),
   };
 }
 

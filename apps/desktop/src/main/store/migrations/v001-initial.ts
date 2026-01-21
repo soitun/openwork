@@ -5,7 +5,7 @@ import Store from 'electron-store';
 import { app } from 'electron';
 import path from 'path';
 import fs from 'fs';
-import { registerMigration } from './index';
+import type { Migration } from './index';
 
 /**
  * Get store name based on environment (dev vs packaged).
@@ -224,8 +224,8 @@ function cleanupLegacyStores(): void {
   }
 }
 
-// Register the migration
-registerMigration({
+// Export the migration
+export const migration: Migration = {
   version: 1,
   up: (db: Database) => {
     // Create schema_meta table
@@ -322,4 +322,4 @@ registerMigration({
     // Cleanup legacy files (outside transaction is fine)
     cleanupLegacyStores();
   },
-});
+};
