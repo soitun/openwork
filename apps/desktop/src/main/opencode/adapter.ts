@@ -189,6 +189,21 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
     const safeCwd = config.workingDirectory || app.getPath('temp');
     const cwdMsg = `Working directory: ${safeCwd}`;
 
+    // Create a minimal package.json in the working directory so OpenCode finds it there
+    // and stops searching upward. This prevents EPERM errors when OpenCode traverses
+    // up to protected directories like C:\Program Files\Openwork\resources\
+    if (app.isPackaged) {
+      const dummyPackageJson = path.join(safeCwd, 'package.json');
+      if (!fs.existsSync(dummyPackageJson)) {
+        try {
+          fs.writeFileSync(dummyPackageJson, JSON.stringify({ name: 'opencode-workspace', private: true }, null, 2));
+          console.log('[OpenCode CLI] Created workspace package.json at:', dummyPackageJson);
+        } catch (err) {
+          console.warn('[OpenCode CLI] Could not create workspace package.json:', err);
+        }
+      }
+    }
+
     console.log('[OpenCode CLI]', cmdMsg);
     console.log('[OpenCode CLI]', argsMsg);
     console.log('[OpenCode CLI]', cwdMsg);
@@ -200,14 +215,20 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
     // Always use PTY for proper terminal emulation
     // We spawn via shell because posix_spawnp doesn't interpret shebangs
     {
-      const fullCommand = [command, ...allArgs].map(arg => {
+      const fullCommand = [command, ...allArgs].map((arg, index) => {
         // Escape single quotes in arguments for shell (Unix) or handle Windows quoting
         if (process.platform === 'win32') {
           // Windows/PowerShell: use double quotes for arguments with spaces
           // PowerShell uses doubled quotes ("") to escape quotes inside double-quoted strings
           // (backslash escaping does NOT work in PowerShell)
           if (arg.includes(' ') || arg.includes('"')) {
-            return `"${arg.replace(/"/g, '""')}"`;
+            const quoted = `"${arg.replace(/"/g, '""')}"`;
+            // For the command (first arg), prepend & call operator so PowerShell executes it
+            // Without &, PowerShell treats "path with spaces" as a string literal, not a command
+            if (index === 0) {
+              return `& ${quoted}`;
+            }
+            return quoted;
           }
           return arg;
         } else {
