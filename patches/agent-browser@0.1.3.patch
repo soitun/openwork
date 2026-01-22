@@ -1,11 +1,12 @@
 diff --git a/dist/browser.js b/dist/browser.js
-index 1111111..2222222 100644
+index a1fc3583d62a10a7212381bc08141281c291bc38..83a7f734c7f54ece0090f980b973c9e31fafe404 100644
 --- a/dist/browser.js
 +++ b/dist/browser.js
-@@ -481,6 +481,39 @@ class Browser {
+@@ -480,6 +480,40 @@ export class BrowserManager {
+         })));
          return tabs;
      }
-     /**
++    /**
 +     * Connect to an existing browser via CDP endpoint
 +     * Used when connecting to an external browser (e.g., dev-browser with anti-detection)
 +     */
@@ -14,7 +15,7 @@ index 1111111..2222222 100644
 +            return;
 +        }
 +        try {
-+            this.browser = await chromium.connectOverCDP(wsEndpoint);
++            this.browser = await playwright_1.chromium.connectOverCDP(wsEndpoint);
 +        }
 +        catch (error) {
 +            throw new Error(`Failed to connect to CDP endpoint ${wsEndpoint}. ` +
@@ -39,15 +40,14 @@ index 1111111..2222222 100644
 +        this.setupPageTracking(page);
 +        this.activePageIndex = 0;
 +    }
-+    /**
+     /**
       * Close the browser and clean up
       */
-     async close() {
 diff --git a/dist/daemon.js b/dist/daemon.js
-index 3333333..4444444 100644
+index f3eaccdb8d7c9ee72277ce61527ee04e4fe66ab9..4fbcc1a60df62e2b7fc8013179ed11efc322d03d 100644
 --- a/dist/daemon.js
 +++ b/dist/daemon.js
-@@ -98,7 +98,14 @@ async function runDaemon() {
+@@ -98,7 +98,14 @@ export async function startDaemon() {
                      if (!browser.isLaunched() &&
                          parseResult.command.action !== 'launch' &&
                          parseResult.command.action !== 'close') {
@@ -64,15 +64,13 @@ index 3333333..4444444 100644
                      // Handle close command specially
                      if (parseResult.command.action === 'close') {
 diff --git a/src/browser.ts b/src/browser.ts
-index 5555555..6666666 100644
+index 14294268d802241d544143d333075f40e98be692..eb97eb6f2753b0f539351c2698df1462de16bbcb 100644
 --- a/src/browser.ts
 +++ b/src/browser.ts
-@@ -590,6 +590,42 @@ export class Browser {
-       }))
-     );
+@@ -592,6 +592,45 @@ export class BrowserManager {
      return tabs;
-+  }
-+
+   }
+ 
 +  /**
 +   * Connect to an existing browser via CDP endpoint
 +   * Used when connecting to an external browser (e.g., dev-browser with anti-detection)
@@ -110,14 +108,16 @@ index 5555555..6666666 100644
 +    this.pages.push(page);
 +    this.setupPageTracking(page);
 +    this.activePageIndex = 0;
-   }
-
++  }
++
    /**
+    * Close the browser and clean up
+    */
 diff --git a/src/daemon.ts b/src/daemon.ts
-index 7777777..8888888 100644
+index 24ff87ba4757aa1b76481d6bdedbe53a29cf4585..d162e457b60b9beb6245c5e8bbefe009d8e70d69 100644
 --- a/src/daemon.ts
 +++ b/src/daemon.ts
-@@ -111,7 +111,13 @@ async function runDaemon(): Promise<void> {
+@@ -111,7 +111,13 @@ export async function startDaemon(): Promise<void> {
              parseResult.command.action !== 'launch' &&
              parseResult.command.action !== 'close'
            ) {
@@ -130,5 +130,5 @@ index 7777777..8888888 100644
 +              await browser.launch({ id: 'auto', action: 'launch', headless: true });
 +            }
            }
-
+ 
            // Handle close command specially
