@@ -5,3 +5,4 @@ export { BedrockProviderForm } from './BedrockProviderForm';
 export { OllamaProviderForm } from './OllamaProviderForm';
 export { OpenRouterProviderForm } from './OpenRouterProviderForm';
 export { LiteLLMProviderForm } from './LiteLLMProviderForm';
+export { HuggingFaceProviderForm } from './HuggingFaceProviderForm';

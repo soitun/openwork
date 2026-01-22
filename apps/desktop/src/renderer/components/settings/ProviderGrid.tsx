@@ -19,6 +19,7 @@ const PROVIDER_ORDER: ProviderId[] = [
   'xai',
   'openrouter',
   'litellm',
+  'huggingface',
 ];
 
 interface ProviderGridProps {

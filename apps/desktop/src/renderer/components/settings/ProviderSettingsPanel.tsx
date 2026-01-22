@@ -9,6 +9,7 @@ import {
   OllamaProviderForm,
   OpenRouterProviderForm,
   LiteLLMProviderForm,
+  HuggingFaceProviderForm,
 } from './providers';
 import { settingsVariants, settingsTransitions } from '@/lib/animations';
 
@@ -82,6 +83,17 @@ export function ProviderSettingsPanel({
       case 'hybrid':
         return (
           <LiteLLMProviderForm
+            connectedProvider={connectedProvider}
+            onConnect={onConnect}
+            onDisconnect={onDisconnect}
+            onModelChange={onModelChange}
+            showModelError={showModelError}
+          />
+        );
+
+      case 'huggingface':
+        return (
+          <HuggingFaceProviderForm
             connectedProvider={connectedProvider}
             onConnect={onConnect}
             onDisconnect={onDisconnect}
