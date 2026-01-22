@@ -54,11 +54,11 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
 }
 
 export async function serve(options: ServeOptions = {}): Promise<DevBrowserServer> {
-  // Accomplish uses ports 9224/9225 to avoid conflicts with Claude Code's dev-browser (9222/9223)
-  const port = options.port ?? 9224;
+  // Ports can be overridden via environment variable for isolated testing
+  const port = options.port ?? parseInt(process.env.DEV_BROWSER_PORT || '9224', 10);
   const headless = options.headless ?? false;
-  const cdpPort = options.cdpPort ?? 9225;
-  const profileDir = options.profileDir;
+  const cdpPort = options.cdpPort ?? parseInt(process.env.DEV_BROWSER_CDP_PORT || '9225', 10);
+  const profileDir = options.profileDir ?? process.env.DEV_BROWSER_PROFILE;
   const useSystemChrome = options.useSystemChrome ?? true; // Default to trying system Chrome
 
   // Validate port numbers
