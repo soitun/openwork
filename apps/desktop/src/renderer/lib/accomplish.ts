@@ -47,7 +47,7 @@ interface AccomplishAPI {
 
   // Settings
   getApiKeys(): Promise<ApiKeyConfig[]>;
-  addApiKey(provider: 'anthropic' | 'openai' | 'openrouter' | 'google' | 'xai' | 'deepseek' | 'zai' | 'custom' | 'bedrock' | 'litellm', key: string, label?: string): Promise<ApiKeyConfig>;
+  addApiKey(provider: 'anthropic' | 'openai' | 'openrouter' | 'google' | 'xai' | 'deepseek' | 'zai' | 'custom' | 'bedrock' | 'litellm' | 'huggingface', key: string, label?: string): Promise<ApiKeyConfig>;
   removeApiKey(id: string): Promise<void>;
   getDebugMode(): Promise<boolean>;
   setDebugMode(enabled: boolean): Promise<void>;
@@ -85,6 +85,14 @@ interface AccomplishAPI {
   }>;
   getOllamaConfig(): Promise<{ baseUrl: string; enabled: boolean; lastValidated?: number; models?: Array<{ id: string; displayName: string; size: number }> } | null>;
   setOllamaConfig(config: { baseUrl: string; enabled: boolean; lastValidated?: number; models?: Array<{ id: string; displayName: string; size: number }> } | null): Promise<void>;
+
+  // HuggingFace configuration
+  validateHuggingFaceToken(token: string): Promise<{ valid: boolean; error?: string }>;
+  fetchHuggingFaceModels(): Promise<{
+    success: boolean;
+    models?: Array<{ id: string; name: string }>;
+    error?: string;
+  }>;
 
   // OpenRouter configuration
   fetchOpenRouterModels(): Promise<{
