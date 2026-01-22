@@ -176,7 +176,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   // Tool: update_session_context
   if (toolName === 'update_session_context') {
-    const input = request.params.arguments as UpdateContextInput;
+    const input = request.params.arguments as unknown as UpdateContextInput;
 
     // Load existing context or create new one
     let context = loadContext(TASK_ID);

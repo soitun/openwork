@@ -86,6 +86,6 @@ export function listContexts(): string[] {
   ensureStorageDir();
   const files = fs.readdirSync(STORAGE_DIR);
   return files
-    .filter((f) => f.endsWith('.json'))
-    .map((f) => f.replace('.json', ''));
+    .filter((f: string) => f.endsWith('.json'))
+    .map((f: string) => f.replace('.json', ''));
 }
