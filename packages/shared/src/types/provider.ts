@@ -2,7 +2,7 @@
  * Provider and model configuration types for multi-provider support
  */
 
-export type ProviderType = 'anthropic' | 'openai' | 'openrouter' | 'google' | 'xai' | 'ollama' | 'deepseek' | 'zai' | 'custom' | 'bedrock' | 'litellm';
+export type ProviderType = 'anthropic' | 'openai' | 'openrouter' | 'google' | 'xai' | 'ollama' | 'deepseek' | 'zai' | 'custom' | 'bedrock' | 'litellm' | 'huggingface';
 
 export interface ProviderConfig {
   id: ProviderType;
@@ -266,6 +266,13 @@ export const DEFAULT_PROVIDERS: ProviderConfig[] = [
     name: 'Amazon Bedrock',
     requiresApiKey: false, // Uses AWS credentials
     models: [], // Now fetched dynamically from AWS API
+  },
+  {
+    id: 'huggingface',
+    name: 'Hugging Face',
+    requiresApiKey: true,
+    apiKeyEnvVar: 'HF_TOKEN',
+    models: [], // Fetched dynamically
   },
 ];
 

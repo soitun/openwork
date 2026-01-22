@@ -10,9 +10,10 @@ export type ProviderId =
   | 'bedrock'
   | 'ollama'
   | 'openrouter'
-  | 'litellm';
+  | 'litellm'
+  | 'huggingface';
 
-export type ProviderCategory = 'classic' | 'aws' | 'local' | 'proxy' | 'hybrid';
+export type ProviderCategory = 'classic' | 'aws' | 'local' | 'proxy' | 'hybrid' | 'huggingface';
 
 export interface ProviderMeta {
   id: ProviderId;
@@ -34,6 +35,7 @@ export const PROVIDER_META: Record<ProviderId, ProviderMeta> = {
   ollama: { id: 'ollama', name: 'Ollama', category: 'local', label: 'Local Models', logoKey: 'olama' },
   openrouter: { id: 'openrouter', name: 'OpenRouter', category: 'proxy', label: 'Service', logoKey: 'open-router', helpUrl: 'https://openrouter.ai/keys' },
   litellm: { id: 'litellm', name: 'LiteLLM', category: 'hybrid', label: 'Service', logoKey: 'liteLLM' },
+  huggingface: { id: 'huggingface', name: 'Hugging Face', category: 'huggingface', label: 'Service', logoKey: 'huggingface', helpUrl: 'https://huggingface.co/settings/tokens' },
 };
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
@@ -68,12 +70,18 @@ export interface LiteLLMCredentials {
   keyPrefix?: string;
 }
 
+export interface HuggingFaceCredentials {
+  type: 'huggingface';
+  keyPrefix: string;
+}
+
 export type ProviderCredentials =
   | ApiKeyCredentials
   | BedrockProviderCredentials
   | OllamaCredentials
   | OpenRouterCredentials
-  | LiteLLMCredentials;
+  | LiteLLMCredentials
+  | HuggingFaceCredentials;
 
 export interface ConnectedProvider {
   providerId: ProviderId;
