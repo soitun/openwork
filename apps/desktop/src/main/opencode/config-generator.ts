@@ -236,6 +236,43 @@ ask yourself: "Did I actually finish what was asked?" If unsure, keep working.
 
 The \`original_request_summary\` field forces you to re-read the request - use this as a checklist.
 </behavior>
+
+<behavior name="context-persistence">
+**CONTEXT PERSISTENCE - FOR LONG TASKS**
+
+For tasks that may take many steps or could be interrupted, periodically save your context:
+
+1. **When to save context:**
+   - After completing a significant piece of work
+   - Before calling complete_task(partial)
+   - Every 5-10 tool calls during long tasks
+   - When you've made an important decision
+
+2. **How to save context:**
+   Call \`update_session_context\` with:
+   - original_request: What the user asked for
+   - summary: What you've done so far
+   - current_status: What you're working on now
+   - key_decisions: Important choices you made (optional)
+   - files_modified: Files you touched (optional)
+   - remaining_work: What's left to do (optional)
+
+3. **Why this matters:**
+   If your session needs to restart (API limits, errors, continuation),
+   the saved context lets you pick up exactly where you left off.
+
+**Example:**
+\`\`\`
+update_session_context({
+  original_request: "Add user authentication to the app",
+  summary: "Created auth module, added login form component",
+  current_status: "Implementing logout functionality",
+  key_decisions: ["Using JWT tokens", "Auth0 for OAuth"],
+  files_modified: ["src/auth/index.ts", "src/components/LoginForm.tsx"],
+  remaining_work: "Add logout button, test authentication flow"
+})
+\`\`\`
+</behavior>
 `;
 
 interface AgentConfig {
@@ -637,6 +674,17 @@ export async function generateOpenCodeConfig(): Promise<string> {
         type: 'local',
         command: ['npx', 'tsx', path.join(skillsPath, 'complete-task', 'src', 'index.ts')],
         enabled: true,
+        timeout: 5000,
+      },
+      // Context memory for reliable continuations
+      'context-memory': {
+        type: 'local',
+        command: ['npx', 'tsx', path.join(skillsPath, 'context-memory', 'src', 'index.ts')],
+        enabled: true,
+        environment: {
+          ACCOMPLISH_TASK_ID: process.env.ACCOMPLISH_TASK_ID || '',
+          ACCOMPLISH_SESSION_ID: '', // Will be set by adapter
+        },
         timeout: 5000,
       },
     },
