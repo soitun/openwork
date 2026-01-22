@@ -42,7 +42,7 @@ const accomplishAPI = {
   // Settings
   getApiKeys: (): Promise<unknown[]> => ipcRenderer.invoke('settings:api-keys'),
   addApiKey: (
-    provider: 'anthropic' | 'openai' | 'openrouter' | 'google' | 'xai' | 'deepseek' | 'zai' | 'custom' | 'bedrock' | 'litellm',
+    provider: 'anthropic' | 'openai' | 'openrouter' | 'google' | 'xai' | 'deepseek' | 'zai' | 'custom' | 'bedrock' | 'litellm' | 'huggingface',
     key: string,
     label?: string
   ): Promise<unknown> =>
@@ -109,6 +109,16 @@ const accomplishAPI = {
 
   setOllamaConfig: (config: { baseUrl: string; enabled: boolean; lastValidated?: number; models?: Array<{ id: string; displayName: string; size: number }> } | null): Promise<void> =>
     ipcRenderer.invoke('ollama:set-config', config),
+
+  // HuggingFace configuration
+  validateHuggingFaceToken: (token: string): Promise<{ valid: boolean; error?: string }> =>
+    ipcRenderer.invoke('huggingface:validate', token),
+
+  fetchHuggingFaceModels: (): Promise<{
+    success: boolean;
+    models?: Array<{ id: string; name: string }>;
+    error?: string;
+  }> => ipcRenderer.invoke('huggingface:fetch-models'),
 
   // OpenRouter configuration
   fetchOpenRouterModels: (): Promise<{
