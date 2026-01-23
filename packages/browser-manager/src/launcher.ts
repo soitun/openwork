@@ -73,13 +73,25 @@ export class LaunchModeLauncher implements Launcher {
       options.onProgress?.('Browser launched with Playwright Chromium');
     }
 
-    // Get CDP WebSocket endpoint
-    const cdpResponse = await fetch(`http://127.0.0.1:${cdpPort}/json/version`);
-    const cdpInfo = (await cdpResponse.json()) as { webSocketDebuggerUrl: string };
+    // Get CDP WebSocket endpoint (with retry for browser startup)
+    let wsEndpoint: string | undefined;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      try {
+        const cdpResponse = await fetch(`http://127.0.0.1:${cdpPort}/json/version`);
+        const cdpInfo = (await cdpResponse.json()) as { webSocketDebuggerUrl: string };
+        wsEndpoint = cdpInfo.webSocketDebuggerUrl;
+        break;
+      } catch {
+        if (attempt === 9) {
+          throw new Error(`CDP endpoint not ready after 10 attempts on port ${cdpPort}`);
+        }
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
 
     return {
       context,
-      wsEndpoint: cdpInfo.webSocketDebuggerUrl,
+      wsEndpoint: wsEndpoint!,
       usedSystemChrome,
     };
   }
