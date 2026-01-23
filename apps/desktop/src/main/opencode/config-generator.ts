@@ -227,10 +227,12 @@ When to call \`complete_task\`:
    - Describe what went wrong
    - State what remains undone in \`remaining_work\`
 
-3. **status: "partial"** - You completed some parts but not all
-   - Summarize what you accomplished
-   - Explain why you couldn't finish the rest
-   - State what remains in \`remaining_work\`
+3. **status: "partial"** - AVOID THIS STATUS
+   - Only use if you are FORCED to stop mid-task (context limit approaching, etc.)
+   - The system will automatically continue you to finish the remaining work
+   - If you use partial, you MUST fill in remaining_work with specific next steps
+   - Do NOT use partial as a way to ask "should I continue?" - just keep working
+   - If you've done some work and can keep going, KEEP GOING - don't use partial
 
 **NEVER** just stop working. If you find yourself about to end without calling \`complete_task\`,
 ask yourself: "Did I actually finish what was asked?" If unsure, keep working.
@@ -615,12 +617,18 @@ export async function generateOpenCodeConfig(azureFoundryToken?: string): Promis
   const litellmProvider = providerSettings.connectedProviders.litellm;
   if (litellmProvider?.connectionStatus === 'connected' && litellmProvider.credentials.type === 'litellm') {
     if (litellmProvider.selectedModelId) {
+      // Get API key if available
+      const litellmApiKey = getApiKey('litellm');
+      const litellmOptions: LiteLLMProviderConfig['options'] = {
+        baseURL: `${litellmProvider.credentials.serverUrl}/v1`,
+      };
+      if (litellmApiKey) {
+        litellmOptions.apiKey = litellmApiKey;
+      }
       providerConfig.litellm = {
         npm: '@ai-sdk/openai-compatible',
         name: 'LiteLLM',
-        options: {
-          baseURL: `${litellmProvider.credentials.serverUrl}/v1`,
-        },
+        options: litellmOptions,
         models: {
           [litellmProvider.selectedModelId]: {
             name: litellmProvider.selectedModelId,
@@ -628,7 +636,7 @@ export async function generateOpenCodeConfig(azureFoundryToken?: string): Promis
           },
         },
       };
-      console.log('[OpenCode Config] LiteLLM configured:', litellmProvider.selectedModelId);
+      console.log('[OpenCode Config] LiteLLM configured:', litellmProvider.selectedModelId, litellmApiKey ? '(with API key)' : '(no API key)');
     }
   }
 
@@ -763,9 +771,14 @@ export async function generateOpenCodeConfig(azureFoundryToken?: string): Promis
   const configJson = JSON.stringify(config, null, 2);
   fs.writeFileSync(configPath, configJson);
 
-  // Set environment variables for OpenCode to find the config and skills
+  // Set environment variables for OpenCode to find the config
   process.env.OPENCODE_CONFIG = configPath;
-  process.env.OPENCODE_CONFIG_DIR = openCodeConfigDir;
+
+  // Set OPENCODE_CONFIG_DIR to the writable config directory, not resourcesPath
+  // resourcesPath is read-only on mounted DMGs (macOS) and protected on Windows (Program Files).
+  // This causes EROFS/EPERM errors when OpenCode tries to write package.json there.
+  // MCP servers are configured with explicit paths, so we don't need skills discovery via OPENCODE_CONFIG_DIR.
+  process.env.OPENCODE_CONFIG_DIR = configDir;
 
   console.log('[OpenCode Config] Generated config at:', configPath);
   console.log('[OpenCode Config] Full config:', configJson);
