@@ -1,11 +1,23 @@
 // packages/browser-manager/src/test/scenarios/port-conflict.test.ts
 import { describe, it, expect } from 'vitest';
-import { BrowserManager } from '../../manager.js';
-import { PortExhaustedError } from '../../port-finder.js';
+import { PortExhaustedError, findAvailablePorts } from '../../port-finder.js';
 import http from 'http';
 
+// High ports unlikely to conflict with system services (59000-59999)
+const TEST_PORT_RANGE_1 = { start: 59800, end: 59810 };
+const TEST_PORT_RANGE_2 = { start: 59850, end: 59854 };
+
+/**
+ * Close an HTTP server and wait for completion
+ */
+async function closeServer(server: http.Server): Promise<void> {
+  return new Promise((resolve) => {
+    server.close(() => resolve());
+  });
+}
+
 describe('Port Conflict Scenarios', () => {
-  it('switches to next port when first is occupied', async () => {
+  it('port-finder skips occupied port and returns next available', async () => {
     // Create a dummy server on port 59800
     const server = http.createServer((_, res) => {
       res.writeHead(200);
@@ -13,28 +25,21 @@ describe('Port Conflict Scenarios', () => {
     });
 
     await new Promise<void>((resolve) => {
-      server.listen(59800, resolve);
+      server.listen(TEST_PORT_RANGE_1.start, resolve);
     });
 
     try {
-      const manager = new BrowserManager({
-        portRangeStart: 59800,
-        portRangeEnd: 59810,
-      });
-
-      // The manager should skip 59800 and use 59802
-      // (This is a unit test, actual acquire would need browser)
-      const { findAvailablePorts } = await import('../../port-finder.js');
+      // Test port-finder directly - verifies the module skips occupied ports
       const ports = await findAvailablePorts({
-        portRangeStart: 59800,
-        portRangeEnd: 59810,
+        portRangeStart: TEST_PORT_RANGE_1.start,
+        portRangeEnd: TEST_PORT_RANGE_1.end,
       });
 
-      // Port 59800 is taken, should get 59802
+      // Port 59800 is taken, should get 59802 (next pair)
       expect(ports.http).toBe(59802);
       expect(ports.cdp).toBe(59803);
     } finally {
-      server.close();
+      await closeServer(server);
     }
   });
 
@@ -42,7 +47,7 @@ describe('Port Conflict Scenarios', () => {
     // Create servers on all ports in a tiny range
     const servers: http.Server[] = [];
 
-    for (let port = 59850; port <= 59854; port += 2) {
+    for (let port = TEST_PORT_RANGE_2.start; port <= TEST_PORT_RANGE_2.end; port += 2) {
       const server = http.createServer((_, res) => {
         res.writeHead(200);
         res.end('taken');
@@ -54,17 +59,15 @@ describe('Port Conflict Scenarios', () => {
     }
 
     try {
-      const { findAvailablePorts } = await import('../../port-finder.js');
       await expect(
         findAvailablePorts({
-          portRangeStart: 59850,
-          portRangeEnd: 59854,
+          portRangeStart: TEST_PORT_RANGE_2.start,
+          portRangeEnd: TEST_PORT_RANGE_2.end,
         })
       ).rejects.toThrow(PortExhaustedError);
     } finally {
-      for (const server of servers) {
-        server.close();
-      }
+      // Close all servers and wait for completion
+      await Promise.all(servers.map(closeServer));
     }
   });
 });
