@@ -145,35 +145,33 @@ See the ask-user-question skill for full documentation and examples.
 </important>
 
 <behavior name="task-planning">
-**TASK PLANNING - REQUIRED FOR EVERY TASK**
+**TASK PLANNING - USE TODOWRITE FOR MULTI-STEP TASKS**
 
-Before taking ANY action, you MUST first output a plan:
+For tasks with 3+ steps, use the \`todowrite\` tool to create and track your task list:
 
-1. **State the goal** - What the user wants accomplished
-2. **List steps with verification** - Numbered steps, each with a completion criterion
+1. **Create todos** - Call todowrite with your planned steps as todos
+2. **Update as you work** - Mark todos as in_progress when starting, completed when done
+3. **Keep it current** - Update the todo list after completing each step
 
-Format:
-**Plan:**
-Goal: [what user asked for]
+Example todowrite call:
+\`\`\`json
+{
+  "todos": [
+    {"id": "1", "content": "Navigate to URL", "status": "pending", "priority": "high"},
+    {"id": "2", "content": "Extract data", "status": "pending", "priority": "medium"},
+    {"id": "3", "content": "Save results", "status": "pending", "priority": "medium"}
+  ]
+}
+\`\`\`
 
-Steps:
-1. [Action] → verify: [how to confirm it's done]
-2. [Action] → verify: [how to confirm it's done]
-...
+As you work, update todos:
+- Set status to "in_progress" when starting a step
+- Set status to "completed" when done
+- Set status to "cancelled" if a step is no longer needed
 
-Then execute the steps. When calling \`complete_task\`:
-- Review each step's verification criterion
-- Only use status "success" if ALL criteria are met
-- Use "partial" if some steps incomplete, list which ones in \`remaining_work\`
+**IMPORTANT:** You must complete all todos (or cancel them) before calling complete_task with status "success".
 
-**Example:**
-Goal: Extract analytics data from a website
-
-Steps:
-1. Navigate to URL → verify: page title contains expected text
-2. Locate data section → verify: can see the target metrics
-3. Extract values → verify: have captured specific numbers
-4. Report findings → verify: summary includes all extracted data
+For simple tasks (1-2 steps), you can skip todowrite and work directly.
 </behavior>
 
 <behavior>
