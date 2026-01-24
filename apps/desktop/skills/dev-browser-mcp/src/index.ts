@@ -107,62 +107,6 @@ let cachedServerMode: string | null = null;
 let activePageOverride: Page | null = null;
 // Track the page that currently has the active glow effect
 let glowingPage: Page | null = null;
-// Track last activity time for auto-timeout
-let lastActivityTime: number = Date.now();
-const GLOW_TIMEOUT_MS = 10000; // 10 seconds
-let glowCheckInterval: ReturnType<typeof setInterval> | null = null;
-
-/**
- * Record browser activity - resets the inactivity timer
- */
-function recordActivity(): void {
-  lastActivityTime = Date.now();
-}
-
-/**
- * Start the glow auto-hide checker (runs every 2 seconds)
- */
-function startGlowChecker(): void {
-  if (glowCheckInterval) return; // Already running
-  console.error('[dev-browser-mcp] Starting glow checker interval');
-
-  glowCheckInterval = setInterval(async () => {
-    const elapsed = Date.now() - lastActivityTime;
-    console.error(`[dev-browser-mcp] Glow check: elapsed=${elapsed}ms, timeout=${GLOW_TIMEOUT_MS}ms, hasPage=${!!glowingPage}, pageClosed=${glowingPage?.isClosed()}`);
-
-    if (elapsed >= GLOW_TIMEOUT_MS) {
-      console.error(`[dev-browser-mcp] Inactivity threshold reached (${elapsed}ms >= ${GLOW_TIMEOUT_MS}ms)`);
-
-      // Stop the checker first to prevent multiple triggers
-      stopGlowChecker();
-
-      if (glowingPage && !glowingPage.isClosed()) {
-        console.error('[dev-browser-mcp] Removing glow from page...');
-        try {
-          await glowingPage.evaluate(() => {
-            document.getElementById('__dev-browser-active-glow')?.remove();
-            document.getElementById('__dev-browser-active-glow-style')?.remove();
-          });
-          console.error('[dev-browser-mcp] Glow elements removed');
-        } catch (err) {
-          console.error('[dev-browser-mcp] Error removing glow:', err);
-        }
-        glowingPage = null;
-      }
-      console.error('[dev-browser-mcp] Glow cleanup complete');
-    }
-  }, 2000); // Check every 2 seconds
-}
-
-/**
- * Stop the glow checker
- */
-function stopGlowChecker(): void {
-  if (glowCheckInterval) {
-    clearInterval(glowCheckInterval);
-    glowCheckInterval = null;
-  }
-}
 
 // Track pages with navigation listeners to avoid duplicates
 const pagesWithGlowListeners = new WeakSet<Page>();
@@ -249,8 +193,6 @@ async function injectActiveTabGlow(page: Page): Promise<void> {
   }
 
   glowingPage = page;
-  recordActivity();
-  startGlowChecker();
 
   // Inject glow elements now
   await injectGlowElements(page);
@@ -264,7 +206,6 @@ async function injectActiveTabGlow(page: Page): Promise<void> {
       if (glowingPage === page && !page.isClosed()) {
         console.error('[dev-browser-mcp] Page navigated, re-injecting glow...');
         await injectGlowElements(page);
-        recordActivity();
       }
     });
   }
@@ -274,34 +215,24 @@ async function injectActiveTabGlow(page: Page): Promise<void> {
  * Remove active tab glow effect from a page
  */
 async function removeActiveTabGlow(page: Page): Promise<void> {
-  console.error('[dev-browser-mcp] removeActiveTabGlow called, page closed:', page.isClosed());
   if (page.isClosed()) {
-    console.error('[dev-browser-mcp] Page is closed, clearing glowingPage');
     if (glowingPage === page) {
       glowingPage = null;
-      stopGlowChecker();
     }
     return;
   }
 
   try {
-    console.error('[dev-browser-mcp] Removing glow elements from page...');
     await page.evaluate(() => {
-      const glow = document.getElementById('__dev-browser-active-glow');
-      const style = document.getElementById('__dev-browser-active-glow-style');
-      console.log('[dev-browser-glow] Removing glow:', !!glow, 'style:', !!style);
-      glow?.remove();
-      style?.remove();
+      document.getElementById('__dev-browser-active-glow')?.remove();
+      document.getElementById('__dev-browser-active-glow-style')?.remove();
     });
-    console.error('[dev-browser-mcp] Glow elements removed from DOM');
-  } catch (err) {
-    console.error('[dev-browser-mcp] Error in page.evaluate:', err);
+  } catch {
+    // Page may have been closed or navigated, ignore errors
   }
 
   if (glowingPage === page) {
     glowingPage = null;
-    stopGlowChecker();
-    console.error('[dev-browser-mcp] glowingPage cleared, checker stopped');
   }
 }
 
@@ -2239,11 +2170,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<CallToo
   const { name, arguments: args } = request.params;
 
   console.error(`[MCP] Tool called: ${name}`, JSON.stringify(args, null, 2));
-
-  // Record activity to keep glow alive while working
-  if (glowingPage && !glowingPage.isClosed()) {
-    recordActivity();
-  }
 
   try {
     switch (name) {
