@@ -722,7 +722,11 @@ export async function generateOpenCodeConfig(azureFoundryToken?: string): Promis
     // Auto-allow all tool permissions - the system prompt instructs the agent to use
     // AskUserQuestion for user confirmations, which shows in the UI as an interactive modal.
     // CLI-level permission prompts don't show in the UI and would block task execution.
-    permission: 'allow',
+    // Note: todowrite is disabled by default and must be explicitly enabled.
+    permission: {
+      '*': 'allow',
+      todowrite: 'allow',
+    },
     provider: Object.keys(providerConfig).length > 0 ? providerConfig : undefined,
     agent: {
       [ACCOMPLISH_AGENT_NAME]: {

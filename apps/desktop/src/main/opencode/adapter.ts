@@ -885,7 +885,8 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
         }
 
         // Detect todowrite tool calls and emit todo state
-        if (toolUseName === 'todowrite') {
+        // Built-in tool name is 'todowrite', MCP-prefixed would be '*_todowrite'
+        if (toolUseName === 'todowrite' || toolUseName.endsWith('_todowrite')) {
           const input = toolUseInput as { todos?: TodoItem[] };
           if (input?.todos && Array.isArray(input.todos)) {
             this.emit('todo:update', input.todos);
