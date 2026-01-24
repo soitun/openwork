@@ -54,17 +54,12 @@ export function TodoSidebar({ todos }: TodoSidebarProps) {
 }
 
 function TodoListItem({ todo }: { todo: TodoItem }) {
-  const priorityBorder = {
-    high: 'border-l-red-500',
-    medium: 'border-l-amber-500',
-    low: 'border-l-blue-500',
-  }[todo.priority];
-
   return (
     <li
       className={cn(
-        'flex items-start gap-2 px-2 py-1.5 rounded-md border-l-2',
-        priorityBorder,
+        'flex items-start gap-2 px-2 py-1.5 rounded-md border-l-2 border-l-border',
+        todo.status === 'completed' && 'border-l-primary',
+        todo.status === 'in_progress' && 'border-l-primary',
         todo.status === 'cancelled' && 'opacity-50'
       )}
     >
@@ -84,7 +79,7 @@ function TodoListItem({ todo }: { todo: TodoItem }) {
 function StatusIcon({ status }: { status: TodoItem['status'] }) {
   switch (status) {
     case 'completed':
-      return <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0 mt-0.5" />;
+      return <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />;
     case 'in_progress':
       return <Loader2 className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5 animate-spin" />;
     case 'cancelled':

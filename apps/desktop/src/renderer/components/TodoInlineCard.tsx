@@ -43,7 +43,7 @@ function InlineStatusIcon({ status }: { status: TodoItem['status'] }) {
   const iconClass = 'h-3 w-3 shrink-0 mt-0.5';
   switch (status) {
     case 'completed':
-      return <CheckCircle2 className={cn(iconClass, 'text-green-500')} />;
+      return <CheckCircle2 className={cn(iconClass, 'text-primary')} />;
     case 'in_progress':
       return <Loader2 className={cn(iconClass, 'text-primary animate-spin')} />;
     case 'cancelled':
