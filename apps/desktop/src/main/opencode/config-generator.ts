@@ -6,7 +6,7 @@ import { getOllamaConfig } from '../store/appSettings';
 import { getApiKey } from '../store/secureStorage';
 import { getProviderSettings, getActiveProviderModel, getConnectedProviderIds } from '../store/providerSettings';
 import { ensureAzureFoundryProxy } from './azure-foundry-proxy';
-import { getNpxPath } from '../utils/bundled-node';
+import { getNpxPath, getBundledNodePaths } from '../utils/bundled-node';
 import type { BedrockCredentials, ProviderId, AzureFoundryCredentials } from '@accomplish/shared';
 
 /**
@@ -111,6 +111,41 @@ function buildMcpCommand(scriptPath: string): string[] {
 
   // macOS/Linux: use system npx from PATH
   return ['npx', 'tsx', scriptPath];
+}
+
+/**
+ * Build environment variables for MCP server spawning.
+ *
+ * ## Why this is needed (Windows only)
+ *
+ * Even with a full path to `npx.cmd`, the batch script internally calls `node`
+ * using `#!/usr/bin/env node` or similar mechanisms. If the bundled Node.js bin
+ * directory is not in PATH, `node` won't be found and the process will fail
+ * immediately with "Connection closed" (the MCP server crashes on startup).
+ *
+ * ## Solution
+ *
+ * On Windows, we prepend the bundled Node.js bin directory to PATH in the
+ * environment passed to MCP servers. This ensures that when `npx.cmd` tries
+ * to run `node`, it finds the bundled version.
+ *
+ * @param additionalEnv - Additional environment variables for this MCP server
+ * @returns Environment object with PATH properly configured
+ */
+function buildMcpEnvironment(additionalEnv: Record<string, string> = {}): Record<string, string> {
+  const env: Record<string, string> = { ...additionalEnv };
+
+  // On Windows, ensure bundled Node.js bin is in PATH
+  // This is critical for npx.cmd to find node when it executes
+  if (process.platform === 'win32') {
+    const bundledPaths = getBundledNodePaths();
+    if (bundledPaths) {
+      const existingPath = process.env.PATH || '';
+      env.PATH = `${bundledPaths.binDir};${existingPath}`;
+    }
+  }
+
+  return env;
 }
 
 const ACCOMPLISH_SYSTEM_PROMPT_TEMPLATE = `<identity>
@@ -801,24 +836,25 @@ export async function generateOpenCodeConfig(azureFoundryToken?: string): Promis
         type: 'local',
         command: buildMcpCommand(filePermissionServerPath),
         enabled: true,
-        environment: {
+        environment: buildMcpEnvironment({
           PERMISSION_API_PORT: String(PERMISSION_API_PORT),
-        },
+        }),
         timeout: 30000,
       },
       'ask-user-question': {
         type: 'local',
         command: buildMcpCommand(path.join(skillsPath, 'ask-user-question', 'src', 'index.ts')),
         enabled: true,
-        environment: {
+        environment: buildMcpEnvironment({
           QUESTION_API_PORT: String(QUESTION_API_PORT),
-        },
+        }),
         timeout: 30000,
       },
       'dev-browser-mcp': {
         type: 'local',
         command: buildMcpCommand(path.join(skillsPath, 'dev-browser-mcp', 'src', 'index.ts')),
         enabled: true,
+        environment: buildMcpEnvironment(),
         timeout: 30000,
       },
       // Provides complete_task tool - agent must call to signal task completion
@@ -826,6 +862,7 @@ export async function generateOpenCodeConfig(azureFoundryToken?: string): Promis
         type: 'local',
         command: buildMcpCommand(path.join(skillsPath, 'complete-task', 'src', 'index.ts')),
         enabled: true,
+        environment: buildMcpEnvironment(),
         timeout: 30000,
       },
     },
