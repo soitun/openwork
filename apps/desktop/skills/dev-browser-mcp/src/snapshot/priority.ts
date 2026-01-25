@@ -4,6 +4,34 @@
  */
 
 /**
+ * Element with viewport info for truncation.
+ */
+export interface TruncatableElement {
+  ref: string;
+  role: string;
+  name: string;
+  inViewport: boolean;
+  [key: string]: unknown;
+}
+
+/**
+ * Options for element truncation.
+ */
+export interface TruncateOptions {
+  maxElements?: number;
+}
+
+/**
+ * Result of element truncation.
+ */
+export interface TruncateResult<T extends TruncatableElement> {
+  elements: T[];
+  totalElements: number;
+  includedElements: number;
+  truncated: boolean;
+}
+
+/**
  * Base priority scores by ARIA role.
  * Primary interactive elements score highest.
  */
@@ -54,4 +82,44 @@ const DEFAULT_PRIORITY = 50;
 export function getElementPriority(role: string, inViewport: boolean): number {
   const basePriority = ROLE_PRIORITIES[role] ?? DEFAULT_PRIORITY;
   return inViewport ? basePriority + VIEWPORT_BONUS : basePriority;
+}
+
+/**
+ * Truncate elements to maxElements, prioritizing by role and viewport.
+ * @param elements - Elements to truncate
+ * @param options - Truncation options
+ * @returns Truncated elements with metadata
+ */
+export function truncateElements<T extends TruncatableElement>(
+  elements: T[],
+  options: TruncateOptions
+): TruncateResult<T> {
+  const maxElements = options.maxElements ?? 300;
+  const totalElements = elements.length;
+
+  if (totalElements <= maxElements) {
+    return {
+      elements,
+      totalElements,
+      includedElements: totalElements,
+      truncated: false,
+    };
+  }
+
+  // Score and sort elements by priority (descending)
+  const scored = elements.map(element => ({
+    element,
+    score: getElementPriority(element.role, element.inViewport),
+  }));
+
+  scored.sort((a, b) => b.score - a.score);
+
+  const truncatedElements = scored.slice(0, maxElements).map(s => s.element);
+
+  return {
+    elements: truncatedElements,
+    totalElements,
+    includedElements: maxElements,
+    truncated: true,
+  };
 }
