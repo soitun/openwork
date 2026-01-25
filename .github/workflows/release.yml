@@ -329,25 +329,41 @@ jobs:
     steps:
       - name: Check build results
         run: |
-          # At least one build must have succeeded
+          PLATFORMS="${{ needs.version-bump.outputs.platforms }}"
           MAC_ARM64="${{ needs.build-mac-arm64.result }}"
           MAC_X64="${{ needs.build-mac-x64.result }}"
           WIN_X64="${{ needs.build-windows-x64.result }}"
 
+          echo "Requested platforms: $PLATFORMS"
           echo "Build results: macOS-arm64=$MAC_ARM64, macOS-x64=$MAC_X64, Windows-x64=$WIN_X64"
 
-          # Count successful builds (success or skipped counts as ok)
-          SUCCESS_COUNT=0
-          if [ "$MAC_ARM64" == "success" ]; then SUCCESS_COUNT=$((SUCCESS_COUNT + 1)); fi
-          if [ "$MAC_X64" == "success" ]; then SUCCESS_COUNT=$((SUCCESS_COUNT + 1)); fi
-          if [ "$WIN_X64" == "success" ]; then SUCCESS_COUNT=$((SUCCESS_COUNT + 1)); fi
+          # Validate all requested platform builds succeeded
+          FAILED=0
 
-          if [ $SUCCESS_COUNT -eq 0 ]; then
-            echo "Error: No builds succeeded"
+          if [ "$PLATFORMS" == "all" ] || [ "$PLATFORMS" == "macos-only" ]; then
+            if [ "$MAC_ARM64" != "success" ]; then
+              echo "Error: macOS ARM64 build failed (result: $MAC_ARM64)"
+              FAILED=1
+            fi
+            if [ "$MAC_X64" != "success" ]; then
+              echo "Error: macOS x64 build failed (result: $MAC_X64)"
+              FAILED=1
+            fi
+          fi
+
+          if [ "$PLATFORMS" == "all" ] || [ "$PLATFORMS" == "windows-only" ]; then
+            if [ "$WIN_X64" != "success" ]; then
+              echo "Error: Windows x64 build failed (result: $WIN_X64)"
+              FAILED=1
+            fi
+          fi
+
+          if [ $FAILED -eq 1 ]; then
+            echo "Error: One or more requested platform builds failed"
             exit 1
           fi
 
-          echo "Successful builds: $SUCCESS_COUNT"
+          echo "All requested platform builds succeeded"
 
       - name: Checkout code
         uses: actions/checkout@v4
