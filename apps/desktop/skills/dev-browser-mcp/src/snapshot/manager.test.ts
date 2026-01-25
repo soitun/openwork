@@ -96,4 +96,42 @@ describe('SnapshotManager', () => {
 
     expect(result.type).toBe('full');
   });
+
+  describe('session history', () => {
+    it('should track navigation history', () => {
+      // Process snapshots for different pages
+      manager.processSnapshot(simpleSnapshot, 'https://example.com/page1', 'Page 1');
+      manager.processSnapshot(simpleSnapshot, 'https://example.com/page2', 'Page 2');
+      manager.processSnapshot(simpleSnapshot, 'https://example.com/page3', 'Page 3');
+
+      const summary = manager.getSessionSummary();
+      expect(summary.history).toContain('Page 1');
+      expect(summary.history).toContain('Page 2');
+      expect(summary.history).toContain('Page 3');
+      expect(summary.pagesVisited).toBe(3);
+    });
+
+    it('should limit history to 10 entries', () => {
+      for (let i = 0; i < 15; i++) {
+        manager.processSnapshot(
+          simpleSnapshot,
+          `https://example.com/page${i}`,
+          `Page ${i}`
+        );
+      }
+
+      const summary = manager.getSessionSummary();
+      expect(summary.pagesVisited).toBe(10);
+      expect(summary.history).not.toContain('Page 0');
+      expect(summary.history).toContain('Page 14');
+    });
+
+    it('should reset history on manager reset', () => {
+      manager.processSnapshot(simpleSnapshot, 'https://example.com', 'Home');
+      manager.reset();
+
+      const summary = manager.getSessionSummary();
+      expect(summary.pagesVisited).toBe(0);
+    });
+  });
 });
