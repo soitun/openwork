@@ -22,6 +22,7 @@
   },
   "include": [
     "src/**/*",
+    "sanity-tests/**/*",
     "../../packages/shared/src/**/*"
   ],
   "exclude": ["node_modules", "dist", "dist-electron", "release"]
