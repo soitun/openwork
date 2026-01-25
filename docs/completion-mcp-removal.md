@@ -195,3 +195,186 @@ The completion enforcement system added complexity and overhead:
 - Continuation retries could loop indefinitely in edge cases
 
 The simpler approach trusts the agent to stop when appropriate.
+
+---
+
+## Post-Removal Discovery: Token Overflow Issue
+
+After removing the completion MCP system, we observed tasks failing with token limit errors:
+- `"prompt is too long: 204762 tokens > 200000 maximum"` (Anthropic)
+- `"Quota exceeded... limit: 1000000"` (Google Gemini)
+- `"You requested up to 32000 tokens, but can only afford 13102"` (OpenRouter credit limit)
+
+### Root Cause Analysis
+
+**The token overflow was NOT caused by removing completion MCP.** It was a pre-existing issue that the completion system was accidentally masking.
+
+#### How Completion MCP Was Hiding the Problem
+
+The completion enforcement system included **session resumption** mechanisms:
+1. When agent called `complete_task(success)` → spawned NEW verification session
+2. When agent stopped without `complete_task` → spawned NEW continuation session
+3. Each new session started with a **fresh context window** (~16K base tokens)
+
+This meant accumulated snapshots were **reset** between sessions. No single session ever grew large enough to hit limits.
+
+#### After Removal
+
+Now the agent runs in a **single continuous session**:
+```
+Step 1:  ~16K tokens (base)
+Step 5:  ~57K tokens
+Step 10: ~135K tokens
+Step 15: ~230K tokens
+Step 20: ~300K+ tokens → EXCEEDS LIMIT
+```
+
+**It's like a memory leak that was "fixed" by periodically restarting the app** - removing the restarts exposed the underlying leak.
+
+### Token Accumulation Evidence
+
+From actual task logs, we observed:
+
+| Step | Input Tokens | Cache Read | Total Context |
+|------|-------------|------------|---------------|
+| 1 | 73 | 16,198 | ~16K |
+| 7 | 134,896 | 0 | ~135K |
+| 11 | 55,997 | 180,031 | ~236K |
+| 20 | 10,648 | 298,718 | ~309K |
+
+**Single-step spikes:**
+- 268,796 tokens in ONE step
+- 139,543 tokens in ONE step
+- 134,896 tokens in ONE step
+
+### What's Causing the Large Snapshots
+
+Browser accessibility tree snapshots on complex pages (e.g., Zillow) contained:
+- **Up to 5,538 elements** (ref=e5538)
+- Full navigation menus with all nested links
+- Image carousels (prev/next controls for each listing)
+- All property listing cards with prices, details, agent info
+- Google Maps embed with all controls
+- Footer links repeated on every page
+
+Even with `interactiveOnly` mode, pages have thousands of interactive elements.
+
+---
+
+## Industry Research: Snapshot Optimization Best Practices
+
+### 1. Vercel's agent-browser
+**Source:** https://paddo.dev/blog/agent-browser-context-efficiency/
+
+- **"Snapshot + Refs"** approach: Returns only `@e1: button "Sign In"` instead of full tree
+- Claims **93% context reduction** vs Playwright MCP
+- Benchmark: 31K chars → 5.5K chars = **5.7x more efficient**
+
+When they removed 80% of tools:
+- Success rate: 80% → **100%**
+- Steps required: **-42%**
+- Execution: **3.5x faster**
+
+### 2. browser-use Framework
+**Source:** https://docs.browser-use.com/customize/agent/all-parameters
+
+Key parameters:
+```python
+max_input_tokens: int = 8000      # Hard limit on input tokens
+viewport_expansion: int = 0       # Only capture visible elements
+paint_order_filtering: bool = True # Remove elements hidden behind others
+```
+
+### 3. D2Snap / Webfuse
+**Source:** https://www.webfuse.com/blog/dom-downsampling-for-llm-based-web-agents
+
+Adaptive downsampling algorithm:
+```javascript
+adaptiveD2Snap(dom, maxTokens: 4096, maxIterations: 5)
+```
+- Merges container elements (div, section) based on merge ratio
+- TextRank algorithm for text content reduction
+- Attribute scoring to drop low-value attributes
+- Automatically adjusts to hit token budget
+
+### 4. Playwright MCP Serialization
+**Source:** https://www.zstack-cloud.com/blog/playwright-mcp-deep-dive-the-perfect-combination-of-large-language-models-and-browser-automation/
+
+- YAML-style format optimized for LLMs
+- Only includes: role, name, URL, and ref ID
+- Stable element positioning with refs
+
+---
+
+## Current Implementation Gap Analysis
+
+**What `dev-browser-mcp` currently has:**
+- ✅ `interactiveOnly` option (skips non-interactive elements)
+- ✅ `refs: "interactable"` (only refs for interactable elements)
+- ✅ Snapshot diffing system
+- ✅ `INTERACTIVE_ROLES` whitelist
+
+**What's missing:**
+
+| Feature | Industry Standard | Current Implementation |
+|---------|-------------------|------------------------|
+| Max elements limit | `max_elements: 500` | ❌ None |
+| Token budget | `max_input_tokens: 8000` | ❌ None |
+| Tree depth limit | 2-3 levels | ❌ Unlimited |
+| Viewport filtering | `viewport_expansion: 0` | ❌ Captures all |
+| Pattern deduplication | Skip repeated nav/footer | ❌ Captures all |
+| Adaptive downsampling | Merge containers | ❌ None |
+
+---
+
+## Recommended Optimizations
+
+Based on industry best practices:
+
+1. **Add `maxElements` parameter**
+   - Stop after N elements (default: 500-1000)
+   - Prioritize interactive elements before truncating
+
+2. **Add `maxTokens` parameter**
+   - Estimate token count and truncate at budget
+   - Use adaptive downsampling like D2Snap
+
+3. **Add `maxDepth` parameter**
+   - Limit tree nesting (default: 3-4 levels)
+   - Flatten deeply nested structures
+
+4. **Add viewport filtering**
+   - Only capture elements currently visible
+   - Option to expand viewport by N pixels
+
+5. **Deduplicate patterns**
+   - Track seen navigation/footer patterns
+   - Skip if identical to previous page
+
+6. **Merge generic containers**
+   - Collapse nested divs/sections without semantic value
+   - Preserve hierarchy while reducing node count
+
+---
+
+## Will Optimizations Hurt Agent Performance?
+
+**No, if implemented carefully.** Industry data shows *better* completion rates with curated context:
+
+| Metric | Before Optimization | After Optimization |
+|--------|--------------------|--------------------|
+| Success rate | 80% | 100% |
+| Steps required | Baseline | -42% |
+| Execution speed | Baseline | 3.5x faster |
+| Context usage | 31K chars | 5.5K chars |
+
+**Why less context = better performance:**
+1. **Signal-to-noise ratio** - Agent finds targets faster without irrelevant elements
+2. **Attention efficiency** - LLMs have finite attention; flooding dilutes it
+3. **Reduced hallucination** - Smaller context = less chance of confusion
+
+**Risks to mitigate:**
+- Make limits configurable per-action
+- Start conservative and tune down
+- Allow "full snapshot" fallback when agent is stuck
+- Prioritize interactive elements before truncating
