@@ -855,7 +855,8 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
         // Built-in tool name is 'todowrite', MCP-prefixed would be '*_todowrite'
         if (toolName === 'todowrite' || toolName.endsWith('_todowrite')) {
           const input = toolInput as { todos?: TodoItem[] };
-          if (input?.todos && Array.isArray(input.todos)) {
+          // Only emit if we have actual todos (ignore empty arrays to prevent accidental clearing)
+          if (input?.todos && Array.isArray(input.todos) && input.todos.length > 0) {
             this.emit('todo:update', input.todos);
             // Also update completion enforcer
             this.completionEnforcer.updateTodos(input.todos);
@@ -899,7 +900,8 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
         // Built-in tool name is 'todowrite', MCP-prefixed would be '*_todowrite'
         if (toolUseName === 'todowrite' || toolUseName.endsWith('_todowrite')) {
           const input = toolUseInput as { todos?: TodoItem[] };
-          if (input?.todos && Array.isArray(input.todos)) {
+          // Only emit if we have actual todos (ignore empty arrays to prevent accidental clearing)
+          if (input?.todos && Array.isArray(input.todos) && input.todos.length > 0) {
             this.emit('todo:update', input.todos);
             // Also update completion enforcer
             this.completionEnforcer.updateTodos(input.todos);
