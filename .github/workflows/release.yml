@@ -138,9 +138,12 @@ jobs:
 
           # Handle 'none' bump type (rebuild existing version)
           if [ "$BUMP_TYPE" == "none (overrides existing release)" ]; then
-            echo "REBUILD MODE: Reusing existing version ${VERSION}"
-            # Tag already exists, just ensure we can check out from it
-            git fetch origin "v${VERSION}" || true
+            echo "REBUILD MODE: Rebuilding version ${VERSION}"
+            # In dry_run mode, update the tag to point to the current branch
+            # This allows testing feature branches without bumping version
+            git tag -f "v${VERSION}"
+            git push origin "v${VERSION}" --force
+            echo "Tag v${VERSION} updated to current branch"
             exit 0
           fi
 
