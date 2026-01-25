@@ -140,7 +140,7 @@ jobs:
             apps/desktop/e2e/html-report/
           retention-days: 7
 
-  # Windows CI (unit, integration, typecheck)
+  # Windows CI (unit tests + typecheck only, integration tests have macOS-specific paths)
   windows-ci:
     name: Windows CI
     runs-on: windows-latest
@@ -163,9 +163,6 @@ jobs:
 
       - name: Run unit tests
         run: pnpm -F @accomplish/desktop test:unit
-
-      - name: Run integration tests
-        run: pnpm -F @accomplish/desktop test:integration
 
       - name: Run typecheck
         run: pnpm -F @accomplish/desktop typecheck
