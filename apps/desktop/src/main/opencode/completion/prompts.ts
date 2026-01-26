@@ -23,6 +23,7 @@ export function getContinuationPrompt(): string {
 
 Before proceeding, ask yourself: "Have I actually finished everything the user asked?"
 
+- If the user sent a greeting or informational message with no actionable request → Call complete_task with status: "success" and summarize the interaction
 - If NO, you haven't finished yet → CONTINUE WORKING on the task
 - If YES, all parts are done → Call complete_task with status: "success"
 - If you hit a blocker → Call complete_task with status: "blocked"
