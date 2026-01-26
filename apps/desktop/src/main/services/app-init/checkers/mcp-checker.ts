@@ -50,6 +50,13 @@ export async function checkMCPServer(
     };
   }
 
+  // In development mode, just verify the file exists
+  // MCP servers need proper stdio setup from the task runner
+  // Spawning them here without MCP protocol causes them to exit immediately
+  if (!app.isPackaged) {
+    return { status: 'healthy', error: null };
+  }
+
   const nodePath = getNodePath();
   const env = buildNodeEnv(process.env);
 
