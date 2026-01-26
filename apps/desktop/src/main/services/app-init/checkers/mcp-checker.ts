@@ -9,6 +9,8 @@
 
 import { spawn, type ChildProcess } from 'child_process';
 import fs from 'fs';
+import path from 'path';
+import { app } from 'electron';
 import type { ComponentHealth, InitError } from '@accomplish/shared';
 import { getNodePath, buildNodeEnv } from '../../../utils/bundled-node';
 
@@ -93,9 +95,18 @@ export async function checkMCPServer(
     };
 
     try {
-      proc = spawn(nodePath, [entryPath], {
+      // In development, use npx tsx to run TypeScript files
+      // In production, use bundled node to run compiled .mjs files
+      const isTypeScript = entryPath.endsWith('.ts');
+      const command = isTypeScript ? 'npx' : nodePath;
+      const args = isTypeScript ? ['tsx', entryPath] : [entryPath];
+      const cwd = isTypeScript ? path.dirname(entryPath) : undefined;
+
+      proc = spawn(command, args, {
         env,
+        cwd,
         stdio: ['pipe', 'pipe', 'pipe'],
+        shell: isTypeScript, // npx needs shell on some platforms
       });
 
       proc.stderr?.on('data', (data: Buffer) => {

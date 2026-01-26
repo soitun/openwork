@@ -49,7 +49,11 @@ export class AppInitManager extends EventEmitter {
   }
 
   private getMCPEntryPath(mcpName: string): string {
-    return path.join(this.getSkillsDir(), mcpName, 'dist', 'index.mjs');
+    if (app.isPackaged) {
+      return path.join(this.getSkillsDir(), mcpName, 'dist', 'index.mjs');
+    }
+    // Development: skills run from TypeScript source via tsx
+    return path.join(this.getSkillsDir(), mcpName, 'src', 'index.ts');
   }
 
   private updateComponent(component: ComponentHealth): void {
