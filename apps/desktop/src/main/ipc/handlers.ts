@@ -354,12 +354,10 @@ export function registerIPCHandlers(): void {
 
     // Create task-scoped callbacks for the TaskManager
     const callbacks: TaskCallbacks = {
-      onMessage: (message: OpenCodeMessage) => {
-        const taskMessage = toTaskMessage(message);
-        if (!taskMessage) return;
-
+      onMessage: (message: TaskMessage) => {
+        // Messages from EventRouter are already in TaskMessage format
         // Queue message for batching instead of immediate send
-        queueMessage(taskId, taskMessage, forwardToRenderer, addTaskMessage);
+        queueMessage(taskId, message, forwardToRenderer, addTaskMessage);
       },
 
       onProgress: (progress: { stage: string; message?: string }) => {
@@ -444,7 +442,7 @@ export function registerIPCHandlers(): void {
       },
     };
 
-    // Start the task via TaskManager (creates isolated adapter or queues if busy)
+    // Start the task via TaskManager (creates SDK session or queues if busy)
     const task = await taskManager.startTask(taskId, validatedConfig, callbacks);
 
     // Add initial user message with the prompt to the chat
@@ -561,13 +559,13 @@ export function registerIPCHandlers(): void {
     }
 
     if (decision === 'allow') {
-      // Send the response to the correct task's CLI
+      // Resolve the permission via SDK
       const message = parsedResponse.selectedOptions?.join(', ') || parsedResponse.message || 'yes';
       const sanitizedMessage = sanitizeString(message, 'permissionResponse', 1024);
-      await taskManager.sendResponse(taskId, sanitizedMessage);
+      await taskManager.sendResponse(taskId, sanitizedMessage, requestId);
     } else {
-      // Send denial to the correct task
-      await taskManager.sendResponse(taskId, 'no');
+      // Send denial via SDK
+      await taskManager.sendResponse(taskId, 'no', requestId);
     }
   });
 
@@ -610,12 +608,10 @@ export function registerIPCHandlers(): void {
 
     // Create task-scoped callbacks for the TaskManager (with batching for performance)
     const callbacks: TaskCallbacks = {
-      onMessage: (message: OpenCodeMessage) => {
-        const taskMessage = toTaskMessage(message);
-        if (!taskMessage) return;
-
+      onMessage: (message: TaskMessage) => {
+        // Messages from EventRouter are already in TaskMessage format
         // Queue message for batching instead of immediate send
-        queueMessage(taskId, taskMessage, forwardToRenderer, addTaskMessage);
+        queueMessage(taskId, message, forwardToRenderer, addTaskMessage);
       },
 
       onProgress: (progress: { stage: string; message?: string }) => {
@@ -700,7 +696,7 @@ export function registerIPCHandlers(): void {
       },
     };
 
-    // Start the task via TaskManager with sessionId for resume (creates isolated adapter or queues if busy)
+    // Start the task via TaskManager with sessionId for resume (creates SDK session or queues if busy)
     const task = await taskManager.startTask(taskId, {
       prompt: validatedPrompt,
       sessionId: validatedSessionId,

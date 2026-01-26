@@ -1,13 +1,13 @@
 /**
- * TaskManager - Manages multiple concurrent OpenCode CLI task executions
+ * TaskManager - Manages multiple concurrent OpenCode task executions via SDK sessions
  *
- * This class implements a process manager pattern to support true parallel
- * session execution. Each task gets its own OpenCodeAdapter instance with
- * isolated PTY process, state, and event handling.
+ * This class manages tasks using the OpenCode SDK (via ServerManager) instead of
+ * spawning PTY processes. Each task maps to an SDK session. Events are received
+ * through the EventRouter's SSE stream and dispatched to per-task callbacks.
  */
 
-import { OpenCodeAdapter } from './adapter';
-import { isOpenCodeCliInstalled, OpenCodeCliNotFoundError } from './cli-path';
+import { getServerManager } from './server-manager';
+import { getEventRouter, type TaskEventCallbacks } from './event-router';
 import { getSkillsPath } from './config-generator';
 import { getNpxPath, getBundledNodePaths } from '../utils/bundled-node';
 import { spawn } from 'child_process';
@@ -20,9 +20,9 @@ import {
   type Task,
   type TaskResult,
   type TaskStatus,
-  type OpenCodeMessage,
   type PermissionRequest,
   type TodoItem,
+  type TaskMessage,
 } from '@accomplish/shared';
 
 /**
@@ -344,7 +344,7 @@ export interface TaskProgressEvent {
  * Callbacks for task events - scoped to a specific task
  */
 export interface TaskCallbacks {
-  onMessage: (message: OpenCodeMessage) => void;
+  onMessage: (message: TaskMessage) => void;
   onProgress: (progress: TaskProgressEvent) => void;
   onPermissionRequest: (request: PermissionRequest) => void;
   onComplete: (result: TaskResult) => void;
@@ -359,9 +359,8 @@ export interface TaskCallbacks {
  */
 interface ManagedTask {
   taskId: string;
-  adapter: OpenCodeAdapter;
+  sessionId: string;
   callbacks: TaskCallbacks;
-  cleanup: () => void;
   createdAt: Date;
 }
 
@@ -382,10 +381,11 @@ interface QueuedTask {
 const DEFAULT_MAX_CONCURRENT_TASKS = 10;
 
 /**
- * TaskManager manages OpenCode CLI task executions with parallel execution
+ * TaskManager manages OpenCode task executions via SDK sessions
  *
  * Multiple tasks can run concurrently up to maxConcurrentTasks.
- * Each task gets its own isolated PTY process and browser pages (prefixed with task ID).
+ * Each task maps to an SDK session. Events arrive via EventRouter's SSE stream
+ * and are dispatched to per-task callbacks.
  */
 export class TaskManager {
   private activeTasks: Map<string, ManagedTask> = new Map();
@@ -393,6 +393,8 @@ export class TaskManager {
   private maxConcurrentTasks: number;
   /** Tracks whether this is the first task since app launch (cold start) */
   private isFirstTask: boolean = true;
+  /** Whether EventRouter callbacks have been wired up */
+  private eventRouterInitialized: boolean = false;
 
   constructor(options?: { maxConcurrentTasks?: number }) {
     this.maxConcurrentTasks = options?.maxConcurrentTasks ?? DEFAULT_MAX_CONCURRENT_TASKS;
@@ -406,6 +408,58 @@ export class TaskManager {
   }
 
   /**
+   * Wire up the EventRouter callbacks so that SSE events arriving for any
+   * registered session are forwarded to the correct task's callbacks.
+   * This is called once, lazily, before the first task executes.
+   */
+  private initEventRouter(): void {
+    if (this.eventRouterInitialized) return;
+    this.eventRouterInitialized = true;
+
+    const eventRouter = getEventRouter();
+    const callbacks: TaskEventCallbacks = {
+      onTaskMessage: (taskId: string, message: TaskMessage) => {
+        const task = this.activeTasks.get(taskId);
+        task?.callbacks.onMessage(message);
+      },
+      onTaskProgress: (taskId: string, progress: { stage: string; message?: string; toolName?: string; toolInput?: unknown }) => {
+        const task = this.activeTasks.get(taskId);
+        task?.callbacks.onProgress(progress);
+      },
+      onPermissionRequest: (taskId: string, request: PermissionRequest) => {
+        const task = this.activeTasks.get(taskId);
+        task?.callbacks.onPermissionRequest(request);
+      },
+      onTaskComplete: (taskId: string, result: TaskResult) => {
+        const task = this.activeTasks.get(taskId);
+        if (task) {
+          task.callbacks.onComplete(result);
+          this.cleanupTask(taskId);
+          this.processQueue();
+        }
+      },
+      onTaskError: (taskId: string, error: string) => {
+        const task = this.activeTasks.get(taskId);
+        if (task) {
+          task.callbacks.onError(new Error(error));
+          this.cleanupTask(taskId);
+          this.processQueue();
+        }
+      },
+      onTodoUpdate: (taskId: string, todos: TodoItem[]) => {
+        const task = this.activeTasks.get(taskId);
+        task?.callbacks.onTodoUpdate?.(todos);
+      },
+      onDebug: (taskId: string, log: { type: string; message: string; data?: unknown }) => {
+        const task = this.activeTasks.get(taskId);
+        task?.callbacks.onDebug?.(log);
+      },
+    };
+
+    eventRouter.setCallbacks(callbacks);
+  }
+
+  /**
    * Start a new task. Multiple tasks can run in parallel up to maxConcurrentTasks.
    * If at capacity, new tasks are queued and start automatically when a task completes.
    */
@@ -414,12 +468,6 @@ export class TaskManager {
     config: TaskConfig,
     callbacks: TaskCallbacks
   ): Promise<Task> {
-    // Check if CLI is installed
-    const cliInstalled = await isOpenCodeCliInstalled();
-    if (!cliInstalled) {
-      throw new OpenCodeCliNotFoundError();
-    }
-
     // Check if task already exists (either running or queued)
     if (this.activeTasks.has(taskId) || this.taskQueue.some(q => q.taskId === taskId)) {
       throw new Error(`Task ${taskId} is already running or queued`);
@@ -471,94 +519,54 @@ export class TaskManager {
   }
 
   /**
-   * Execute a task immediately (internal)
+   * Execute a task immediately using the SDK session API (internal)
    */
   private async executeTask(
     taskId: string,
     config: TaskConfig,
     callbacks: TaskCallbacks
   ): Promise<Task> {
-    // Create a new adapter instance for this task
-    const adapter = new OpenCodeAdapter(taskId);
+    // Ensure EventRouter callbacks are wired up
+    this.initEventRouter();
 
-    // Wire up event listeners
-    const onMessage = (message: OpenCodeMessage) => {
-      callbacks.onMessage(message);
-    };
+    const serverManager = getServerManager();
+    const client = serverManager.getClient();
+    const eventRouter = getEventRouter();
 
-    const onProgress = (progress: { stage: string; message?: string }) => {
-      callbacks.onProgress(progress);
-    };
+    // Create or reuse an SDK session
+    let sessionId: string;
+    if (config.sessionId) {
+      sessionId = config.sessionId;
+    } else {
+      const session = await client.session.create({});
+      sessionId = session.data!.id;
+    }
 
-    const onPermissionRequest = (request: PermissionRequest) => {
-      callbacks.onPermissionRequest(request);
-    };
-
-    const onComplete = (result: TaskResult) => {
-      callbacks.onComplete(result);
-      // Auto-cleanup on completion and process queue
-      this.cleanupTask(taskId);
-      this.processQueue();
-    };
-
-    const onError = (error: Error) => {
-      callbacks.onError(error);
-      // Auto-cleanup on error and process queue
-      this.cleanupTask(taskId);
-      this.processQueue();
-    };
-
-    const onDebug = (log: { type: string; message: string; data?: unknown }) => {
-      callbacks.onDebug?.(log);
-    };
-
-    const onTodoUpdate = (todos: TodoItem[]) => {
-      callbacks.onTodoUpdate?.(todos);
-    };
-
-    // Attach listeners
-    adapter.on('message', onMessage);
-    adapter.on('progress', onProgress);
-    adapter.on('permission-request', onPermissionRequest);
-    adapter.on('complete', onComplete);
-    adapter.on('error', onError);
-    adapter.on('debug', onDebug);
-    adapter.on('todo:update', onTodoUpdate);
-
-    // Create cleanup function
-    const cleanup = () => {
-      adapter.off('message', onMessage);
-      adapter.off('progress', onProgress);
-      adapter.off('permission-request', onPermissionRequest);
-      adapter.off('complete', onComplete);
-      adapter.off('error', onError);
-      adapter.off('debug', onDebug);
-      adapter.off('todo:update', onTodoUpdate);
-      adapter.dispose();
-    };
+    // Register with EventRouter so SSE events for this session are routed to this task
+    eventRouter.registerSession(sessionId, taskId);
 
     // Register the managed task
     const managedTask: ManagedTask = {
       taskId,
-      adapter,
+      sessionId,
       callbacks,
-      cleanup,
       createdAt: new Date(),
     };
     this.activeTasks.set(taskId, managedTask);
 
-    console.log(`[TaskManager] Executing task ${taskId}. Active tasks: ${this.activeTasks.size}`);
+    console.log(`[TaskManager] Executing task ${taskId} with session ${sessionId}. Active tasks: ${this.activeTasks.size}`);
 
     // Create task object immediately so UI can navigate
     const task: Task = {
       id: taskId,
       prompt: config.prompt,
       status: 'running',
+      sessionId,
       messages: [],
       createdAt: new Date().toISOString(),
     };
 
-    // Start browser setup and agent asynchronously
+    // Start browser setup and send prompt asynchronously
     // This allows the UI to navigate immediately while setup happens
     const isFirstTask = this.isFirstTask;
     (async () => {
@@ -582,8 +590,13 @@ export class TaskManager {
         // Emit environment setup stage
         callbacks.onProgress({ stage: 'environment', message: 'Setting up environment...', isFirstTask });
 
-        // Now start the agent
-        await adapter.startTask({ ...config, taskId });
+        // Send prompt via SDK (fire-and-forget; events come via SSE/EventRouter)
+        await client.session.promptAsync({
+          path: { id: sessionId },
+          body: {
+            parts: [{ type: 'text', text: config.prompt }],
+          },
+        });
       } catch (error) {
         // Cleanup on failure and process queue
         callbacks.onError(error instanceof Error ? error : new Error(String(error)));
@@ -642,7 +655,10 @@ export class TaskManager {
     console.log(`[TaskManager] Cancelling running task ${taskId}`);
 
     try {
-      await managedTask.adapter.cancelTask();
+      const client = getServerManager().getClient();
+      await client.session.abort({ path: { id: managedTask.sessionId } });
+    } catch (error) {
+      console.error(`[TaskManager] Error aborting session for task ${taskId}:`, error);
     } finally {
       this.cleanupTask(taskId);
       // Process queue after cancellation
@@ -651,9 +667,10 @@ export class TaskManager {
   }
 
   /**
-   * Interrupt a running task (graceful Ctrl+C)
-   * Unlike cancel, this doesn't kill the process - it just interrupts the current operation
-   * and allows the agent to wait for the next user input.
+   * Interrupt a running task (graceful abort via SDK)
+   * Unlike cancel, this sends an abort signal but doesn't clean up the task --
+   * the EventRouter will receive a session.error with MessageAbortedError which
+   * triggers completion with 'interrupted' status.
    */
   async interruptTask(taskId: string): Promise<void> {
     const managedTask = this.activeTasks.get(taskId);
@@ -663,7 +680,13 @@ export class TaskManager {
     }
 
     console.log(`[TaskManager] Interrupting task ${taskId}`);
-    await managedTask.adapter.interruptTask();
+
+    try {
+      const client = getServerManager().getClient();
+      await client.session.abort({ path: { id: managedTask.sessionId } });
+    } catch (error) {
+      console.error(`[TaskManager] Error aborting session for task ${taskId}:`, error);
+    }
   }
 
   /**
@@ -711,15 +734,37 @@ export class TaskManager {
   }
 
   /**
-   * Send a response to a specific task's PTY (for permissions/questions)
+   * Send a permission response via the SDK.
+   *
+   * @param taskId   - The task that owns the permission request
+   * @param response - 'yes' / allow text maps to 'once', 'no' maps to 'reject'
+   * @param permissionId - Optional permission ID. When provided, resolves
+   *   the permission directly via the SDK. When omitted, the method is a no-op
+   *   (permissions must be resolved through the SDK permission endpoint).
    */
-  async sendResponse(taskId: string, response: string): Promise<void> {
+  async sendResponse(taskId: string, response: string, permissionId?: string): Promise<void> {
     const managedTask = this.activeTasks.get(taskId);
     if (!managedTask) {
       throw new Error(`Task ${taskId} not found or not active`);
     }
 
-    await managedTask.adapter.sendResponse(response);
+    if (!permissionId) {
+      console.warn(`[TaskManager] sendResponse called without permissionId for task ${taskId}. Cannot resolve permission via SDK.`);
+      return;
+    }
+
+    const client = getServerManager().getClient();
+    const decision = response === 'no' ? 'reject' : 'once';
+
+    await client.postSessionIdPermissionsPermissionId({
+      path: {
+        id: managedTask.sessionId,
+        permissionID: permissionId,
+      },
+      body: {
+        response: decision,
+      },
+    });
   }
 
   /**
@@ -727,7 +772,7 @@ export class TaskManager {
    */
   getSessionId(taskId: string): string | null {
     const managedTask = this.activeTasks.get(taskId);
-    return managedTask?.adapter.getSessionId() ?? null;
+    return managedTask?.sessionId ?? null;
   }
 
   /**
@@ -767,7 +812,9 @@ export class TaskManager {
     const managedTask = this.activeTasks.get(taskId);
     if (managedTask) {
       console.log(`[TaskManager] Cleaning up task ${taskId}`);
-      managedTask.cleanup();
+      // Unregister from EventRouter so we stop receiving events for this session
+      const eventRouter = getEventRouter();
+      eventRouter.unregisterSession(taskId);
       this.activeTasks.delete(taskId);
       console.log(`[TaskManager] Task ${taskId} cleaned up. Active tasks: ${this.activeTasks.size}`);
     }
@@ -783,9 +830,10 @@ export class TaskManager {
     // Clear the queue
     this.taskQueue = [];
 
-    for (const [taskId, managedTask] of this.activeTasks) {
+    const eventRouter = getEventRouter();
+    for (const [taskId] of this.activeTasks) {
       try {
-        managedTask.cleanup();
+        eventRouter.unregisterSession(taskId);
       } catch (error) {
         console.error(`[TaskManager] Error cleaning up task ${taskId}:`, error);
       }
