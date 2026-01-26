@@ -36,6 +36,8 @@ import type { TodoItem } from '@accomplish/shared';
 export interface CompletionEnforcerCallbacks {
   onStartVerification: (prompt: string) => Promise<void>;
   onStartContinuation: (prompt: string) => Promise<void>;
+  onVerificationStart: () => void;
+  onVerificationEnd: () => void;
   onComplete: () => void;
   onDebug: (type: string, message: string, data?: unknown) => void;
 }
@@ -101,7 +103,12 @@ export class CompletionEnforcer {
       completeTaskArgs.remaining_work = this.getIncompleteTodosSummary();
     }
 
+    const wasVerifying = this.state.getState() === CompletionFlowState.VERIFYING;
     this.state.recordCompleteTaskCall(completeTaskArgs);
+
+    if (wasVerifying) {
+      this.callbacks.onVerificationEnd();
+    }
 
     this.callbacks.onDebug(
       'complete_task',
@@ -151,6 +158,7 @@ export class CompletionEnforcer {
       // it means they found issues and are continuing to work
       if (this.state.isInVerificationMode()) {
         this.state.verificationContinuing();
+        this.callbacks.onVerificationEnd();
         this.callbacks.onDebug(
           'verification',
           'Agent continuing work after verification check'
@@ -189,6 +197,7 @@ export class CompletionEnforcer {
       );
 
       this.state.startVerification();
+      this.callbacks.onVerificationStart();
 
       this.callbacks.onDebug(
         'verification',

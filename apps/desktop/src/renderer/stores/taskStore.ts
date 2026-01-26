@@ -56,6 +56,11 @@ interface TaskState {
   startupStage: StartupStageInfo | null;
   startupStageTaskId: string | null;
 
+  // Verification progress (completion enforcer)
+  isVerifying: boolean;
+  verificationTaskId: string | null;
+  verificationMessage: string | null;
+
   // Todo tracking
   todos: TodoItem[];
   todosTaskId: string | null;
@@ -73,6 +78,7 @@ interface TaskState {
   setSetupProgress: (taskId: string | null, message: string | null) => void;
   setStartupStage: (taskId: string | null, stage: string | null, message?: string, modelName?: string, isFirstTask?: boolean) => void;
   clearStartupStage: (taskId: string) => void;
+  setVerificationStatus: (taskId: string | null, isVerifying: boolean, message?: string | null) => void;
   sendFollowUp: (message: string) => Promise<void>;
   cancelTask: () => Promise<void>;
   interruptTask: () => Promise<void>;
@@ -108,6 +114,9 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   setupDownloadStep: 1,
   startupStage: null,
   startupStageTaskId: null,
+  isVerifying: false,
+  verificationTaskId: null,
+  verificationMessage: null,
   todos: [],
   todosTaskId: null,
   authError: null,
@@ -362,8 +371,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       let updatedTasks = state.tasks;
       let newStatus: TaskStatus | null = null;
 
+      const isVerifyingTask = state.isVerifying && state.verificationTaskId === event.taskId;
+
       // Handle message events - only if viewing this task
-      if (event.type === 'message' && event.message && isCurrentTask && state.currentTask) {
+      if (event.type === 'message' && event.message && isCurrentTask && state.currentTask && !isVerifyingTask) {
         updatedCurrentTask = {
           ...state.currentTask,
           messages: [...state.currentTask.messages, event.message],
@@ -445,6 +456,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     });
     set((state) => {
       if (!state.currentTask || state.currentTask.id !== event.taskId) {
+        return state;
+      }
+
+      if (state.isVerifying && state.verificationTaskId === event.taskId) {
         return state;
       }
 
@@ -543,6 +558,22 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       todosTaskId: null,
       authError: null,
       isLauncherOpen: false,
+      isVerifying: false,
+      verificationTaskId: null,
+      verificationMessage: null,
+    });
+  },
+
+  setVerificationStatus: (taskId: string | null, isVerifying: boolean, message?: string | null) => {
+    if (!taskId || !isVerifying) {
+      set({ isVerifying: false, verificationTaskId: null, verificationMessage: null });
+      return;
+    }
+
+    set({
+      isVerifying: true,
+      verificationTaskId: taskId,
+      verificationMessage: message ?? 'Verifying completion...',
     });
   },
 
@@ -588,6 +619,16 @@ if (typeof window !== 'undefined' && window.accomplish) {
       return;
     }
 
+    // Handle verification stages
+    if (event.stage === 'verifying') {
+      state.setVerificationStatus(event.taskId, true, event.message);
+      return;
+    }
+    if (event.stage === 'verification-complete') {
+      state.setVerificationStatus(event.taskId, false);
+      return;
+    }
+
     // Handle browser download progress (setup stage)
     if (event.stage === 'setup' && event.message) {
       // Clear progress if installation completed
@@ -618,6 +659,9 @@ if (typeof window !== 'undefined' && window.accomplish) {
         state.setSetupProgress(null, null);
       }
       state.clearStartupStage(updateEvent.taskId);
+      if (state.verificationTaskId === updateEvent.taskId) {
+        state.setVerificationStatus(null, false);
+      }
       // Note: todos are cleared in addTaskUpdate() based on interrupt status
     }
   });

@@ -114,6 +114,17 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
       onStartContinuation: async (prompt: string) => {
         await this.spawnSessionResumption(prompt);
       },
+      onVerificationStart: () => {
+        this.emit('progress', {
+          stage: 'verifying',
+          message: 'Verifying completion...',
+        });
+      },
+      onVerificationEnd: () => {
+        this.emit('progress', {
+          stage: 'verification-complete',
+        });
+      },
       onComplete: () => {
         this.hasCompleted = true;
         this.emit('complete', {

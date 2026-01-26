@@ -206,6 +206,9 @@ export default function ExecutionPage() {
     setupDownloadStep,
     startupStage,
     startupStageTaskId,
+    isVerifying,
+    verificationTaskId,
+    verificationMessage,
     todos,
     todosTaskId,
   } = useTaskStore();
@@ -360,6 +363,7 @@ export default function ExecutionPage() {
 
   // Auto-focus follow-up input when task completes
   const isComplete = ['completed', 'failed', 'cancelled', 'interrupted'].includes(currentTask?.status ?? '');
+  const isVerifyingCurrentTask = isVerifying && verificationTaskId === id;
   const hasSession = currentTask?.sessionId || currentTask?.result?.sessionId;
   const canFollowUp = isComplete && (hasSession || currentTask?.status === 'interrupted');
 
@@ -757,7 +761,22 @@ export default function ExecutionPage() {
             })}
 
             <AnimatePresence>
-              {currentTask.status === 'running' && !permissionRequest && (
+              {isVerifyingCurrentTask && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={springs.gentle}
+                  className="flex items-center gap-2 text-muted-foreground py-2"
+                  data-testid="execution-verifying-indicator"
+                >
+                  <SpinningIcon className="h-4 w-4" />
+                  <span className="text-sm">
+                    {verificationMessage || 'Verifying completion...'}
+                  </span>
+                </motion.div>
+              )}
+              {!isVerifyingCurrentTask && currentTask.status === 'running' && !permissionRequest && (
                 /* Skip thinking indicator for browser_script - it's shown in the message bubble */
                 currentTool?.endsWith('browser_script') ? null : (
                   <motion.div

@@ -80,7 +80,7 @@ export type StartupStage =
 
 export interface TaskProgress {
   taskId: string;
-  stage: 'init' | 'thinking' | 'tool-use' | 'waiting' | 'complete' | 'setup' | StartupStage;
+  stage: 'init' | 'thinking' | 'tool-use' | 'waiting' | 'complete' | 'setup' | 'verifying' | 'verification-complete' | StartupStage;
   toolName?: string;
   toolInput?: unknown;
   percentage?: number;
