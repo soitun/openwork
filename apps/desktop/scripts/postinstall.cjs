@@ -13,6 +13,14 @@ const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
+// Prevent infinite recursion when npm install triggers parent postinstall
+// This happens on Windows where npm walks up to find package.json
+if (process.env.OPENWORK_POSTINSTALL_RUNNING) {
+  console.log('> Postinstall already running, skipping nested invocation');
+  process.exit(0);
+}
+process.env.OPENWORK_POSTINSTALL_RUNNING = '1';
+
 const isWindows = process.platform === 'win32';
 
 function runCommand(command, description) {
@@ -21,7 +29,8 @@ function runCommand(command, description) {
     execSync(command, {
       stdio: 'inherit',
       cwd: path.join(__dirname, '..'),
-      shell: true
+      shell: true,
+      env: { ...process.env, OPENWORK_POSTINSTALL_RUNNING: '1' }
     });
   } catch (error) {
     console.error(`Failed: ${description}`);
