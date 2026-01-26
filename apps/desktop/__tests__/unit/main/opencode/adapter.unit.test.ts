@@ -452,6 +452,19 @@ describe('OpenCode Adapter Module', () => {
           },
         };
 
+        const activityToolCallMessage: OpenCodeToolCallMessage = {
+          type: 'tool_call',
+          part: {
+            id: 'tool-1',
+            sessionID: 'session-123',
+            messageID: 'message-123',
+            type: 'tool-call',
+            tool: 'Bash',
+            input: { command: 'ls -la' },
+          },
+        };
+        mockPtyInstance.simulateData(JSON.stringify(activityToolCallMessage) + '\n');
+
         // Act
         mockPtyInstance.simulateData(JSON.stringify(stepFinishMessage) + '\n');
 
