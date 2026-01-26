@@ -48,6 +48,26 @@ export function getOpenCodeConfigDir(): string {
   }
 }
 
+function resolveBundledTsxCommand(skillsPath: string): string[] {
+  const tsxBin = process.platform === 'win32' ? 'tsx.cmd' : 'tsx';
+  const candidates = [
+    path.join(skillsPath, 'file-permission', 'node_modules', '.bin', tsxBin),
+    path.join(skillsPath, 'ask-user-question', 'node_modules', '.bin', tsxBin),
+    path.join(skillsPath, 'dev-browser-mcp', 'node_modules', '.bin', tsxBin),
+    path.join(skillsPath, 'complete-task', 'node_modules', '.bin', tsxBin),
+  ];
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      console.log('[OpenCode Config] Using bundled tsx:', candidate);
+      return [candidate];
+    }
+  }
+
+  console.log('[OpenCode Config] Bundled tsx not found; falling back to npx tsx');
+  return ['npx', 'tsx'];
+}
+
 /**
  * Build platform-specific environment setup instructions
  */
@@ -728,13 +748,15 @@ export async function generateOpenCodeConfig(azureFoundryToken?: string): Promis
     console.log('[OpenCode Config] Z.AI Coding Plan provider configured with models:', Object.keys(zaiModels));
   }
 
+  const tsxCommand = resolveBundledTsxCommand(skillsPath);
+  console.log('[OpenCode Config] MCP build marker: edited by codex');
   const config: OpenCodeConfig = {
     $schema: 'https://opencode.ai/config.json',
     default_agent: ACCOMPLISH_AGENT_NAME,
     // Enable all supported providers - providers auto-configure when API keys are set via env vars
     enabled_providers: enabledProviders,
-    // Auto-allow all tool permissions - the system prompt instructs the agent to use
-    // AskUserQuestion for user confirmations, which shows in the UI as an interactive modal.
+  // Auto-allow all tool permissions - the system prompt instructs the agent to use
+  // AskUserQuestion for user confirmations, which shows in the UI as an interactive modal.
     // CLI-level permission prompts don't show in the UI and would block task execution.
     // Note: todowrite is disabled by default and must be explicitly enabled.
     permission: {
@@ -754,7 +776,7 @@ export async function generateOpenCodeConfig(azureFoundryToken?: string): Promis
     mcp: {
       'file-permission': {
         type: 'local',
-        command: ['npx', 'tsx', filePermissionServerPath],
+        command: [...tsxCommand, filePermissionServerPath],
         enabled: true,
         environment: {
           PERMISSION_API_PORT: String(PERMISSION_API_PORT),
@@ -763,7 +785,7 @@ export async function generateOpenCodeConfig(azureFoundryToken?: string): Promis
       },
       'ask-user-question': {
         type: 'local',
-        command: ['npx', 'tsx', path.join(skillsPath, 'ask-user-question', 'src', 'index.ts')],
+        command: [...tsxCommand, path.join(skillsPath, 'ask-user-question', 'src', 'index.ts')],
         enabled: true,
         environment: {
           QUESTION_API_PORT: String(QUESTION_API_PORT),
@@ -772,14 +794,14 @@ export async function generateOpenCodeConfig(azureFoundryToken?: string): Promis
       },
       'dev-browser-mcp': {
         type: 'local',
-        command: ['npx', 'tsx', path.join(skillsPath, 'dev-browser-mcp', 'src', 'index.ts')],
+        command: [...tsxCommand, path.join(skillsPath, 'dev-browser-mcp', 'src', 'index.ts')],
         enabled: true,
         timeout: 30000,
       },
       // Provides complete_task tool - agent must call to signal task completion
       'complete-task': {
         type: 'local',
-        command: ['npx', 'tsx', path.join(skillsPath, 'complete-task', 'src', 'index.ts')],
+        command: [...tsxCommand, path.join(skillsPath, 'complete-task', 'src', 'index.ts')],
         enabled: true,
         timeout: 30000,
       },
