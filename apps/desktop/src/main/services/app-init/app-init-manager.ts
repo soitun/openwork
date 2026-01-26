@@ -42,7 +42,9 @@ export class AppInitManager extends EventEmitter {
 
   private getSkillsDir(): string {
     if (app.isPackaged) {
-      return path.join(process.resourcesPath, 'app', 'skills');
+      // In packaged app, skills are unpacked to resources/skills
+      // Must match getSkillsPath() in config-generator.ts
+      return path.join(process.resourcesPath, 'skills');
     }
     // Development: skills are in apps/desktop/skills
     return path.join(app.getAppPath(), 'skills');

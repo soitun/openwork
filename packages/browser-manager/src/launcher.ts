@@ -61,14 +61,6 @@ function getChromePaths(): string[] {
 }
 
 /**
- * Check if Chrome is installed
- */
-function isChromeInstalled(): boolean {
-  const paths = getChromePaths();
-  return paths.some(path => existsSync(path));
-}
-
-/**
  * Launch mode - launches a new browser instance
  */
 export class LaunchModeLauncher implements Launcher {
@@ -79,11 +71,9 @@ export class LaunchModeLauncher implements Launcher {
   }
 
   async launch(httpPort: number, cdpPort: number, options: LaunchOptions): Promise<LaunchResult> {
-    // Pre-check: Verify Chrome is installed before attempting launch
-    if (!isChromeInstalled()) {
-      throw new ChromeNotFoundError(getChromePaths());
-    }
-
+    // Let Playwright handle Chrome detection - it has broader discovery methods
+    // (registry on Windows, which on Linux, etc.) than our limited path list.
+    // We catch Playwright's "not found" errors and convert to ChromeNotFoundError.
     options.onProgress?.('Launching Chrome...');
     const profileDir = ensureProfileDir('chrome');
 
