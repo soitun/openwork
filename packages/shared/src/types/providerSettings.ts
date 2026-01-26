@@ -80,13 +80,19 @@ export interface AzureFoundryCredentials {
   keyPrefix?: string; // Only for api-key auth
 }
 
+export interface OAuthCredentials {
+  type: 'oauth';
+  oauthProvider: 'chatgpt'; // Can extend to support other OAuth providers
+}
+
 export type ProviderCredentials =
   | ApiKeyCredentials
   | BedrockProviderCredentials
   | OllamaCredentials
   | OpenRouterCredentials
   | LiteLLMCredentials
-  | AzureFoundryCredentials;
+  | AzureFoundryCredentials
+  | OAuthCredentials;
 
 export interface ConnectedProvider {
   providerId: ProviderId;

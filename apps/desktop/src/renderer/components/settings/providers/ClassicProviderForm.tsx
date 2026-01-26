@@ -1,10 +1,10 @@
 // apps/desktop/src/renderer/components/settings/providers/ClassicProviderForm.tsx
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { getAccomplish } from '@/lib/accomplish';
 import { settingsVariants, settingsTransitions } from '@/lib/animations';
-import type { ProviderId, ConnectedProvider, ApiKeyCredentials } from '@accomplish/shared';
+import type { ProviderId, ConnectedProvider, ApiKeyCredentials, OAuthCredentials } from '@accomplish/shared';
 import { PROVIDER_META, DEFAULT_PROVIDERS, getDefaultModelForProvider } from '@accomplish/shared';
 import {
   ModelSelector,
@@ -54,11 +54,28 @@ export function ClassicProviderForm({
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // OpenAI-specific state
+  const [openAiBaseUrl, setOpenAiBaseUrl] = useState('');
+  const [savingBaseUrl, setSavingBaseUrl] = useState(false);
+  const [baseUrlSaved, setBaseUrlSaved] = useState(false);
+  const [oauthStatus, setOauthStatus] = useState<{ connected: boolean; expires?: number } | null>(null);
+  const [signingIn, setSigningIn] = useState(false);
+
   const meta = PROVIDER_META[providerId];
   const providerConfig = DEFAULT_PROVIDERS.find(p => p.id === providerId);
   const models = providerConfig?.models.map(m => ({ id: m.fullId, name: m.displayName })) || [];
   const isConnected = connectedProvider?.connectionStatus === 'connected';
   const logoSrc = PROVIDER_LOGOS[providerId];
+  const isOpenAI = providerId === 'openai';
+
+  // Fetch OpenAI-specific settings
+  useEffect(() => {
+    if (!isOpenAI) return;
+
+    const accomplish = getAccomplish();
+    accomplish.getOpenAiBaseUrl().then(setOpenAiBaseUrl).catch(console.error);
+    accomplish.getOpenAiOauthStatus().then(setOauthStatus).catch(console.error);
+  }, [isOpenAI]);
 
   const handleConnect = async () => {
     if (!apiKey.trim()) {
@@ -109,9 +126,118 @@ export function ClassicProviderForm({
     }
   };
 
+  // OpenAI-specific handlers
+  const handleSaveBaseUrl = async () => {
+    setSavingBaseUrl(true);
+    setBaseUrlSaved(false);
+    try {
+      const accomplish = getAccomplish();
+      await accomplish.setOpenAiBaseUrl(openAiBaseUrl.trim());
+      setBaseUrlSaved(true);
+      setTimeout(() => setBaseUrlSaved(false), 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save base URL');
+    } finally {
+      setSavingBaseUrl(false);
+    }
+  };
+
+  const handleChatGptSignIn = async () => {
+    setSigningIn(true);
+    setError(null);
+    try {
+      const accomplish = getAccomplish();
+      await accomplish.loginOpenAiWithChatGpt();
+      const status = await accomplish.getOpenAiOauthStatus();
+      setOauthStatus(status);
+
+      if (status.connected) {
+        // Create connected provider with OAuth credentials
+        const defaultModel = getDefaultModelForProvider(providerId);
+        const provider: ConnectedProvider = {
+          providerId,
+          connectionStatus: 'connected',
+          selectedModelId: defaultModel,
+          credentials: {
+            type: 'oauth',
+            oauthProvider: 'chatgpt',
+          } as OAuthCredentials,
+          lastConnectedAt: new Date().toISOString(),
+        };
+        onConnect(provider);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sign-in failed');
+    } finally {
+      setSigningIn(false);
+    }
+  };
+
   return (
     <div className="rounded-xl border border-border bg-card p-5" data-testid="provider-settings-panel">
       <ProviderFormHeader logoSrc={logoSrc} providerName={meta.name} />
+
+      {/* ChatGPT Sign-in (OpenAI only) */}
+      {isOpenAI && !isConnected && (
+        <div className="mb-5 rounded-lg border border-border bg-muted/30 p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <div className="font-medium text-foreground text-sm">Sign in with ChatGPT</div>
+              <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                Use your ChatGPT Plus/Pro subscription via OAuth. No API key required.
+              </p>
+              {oauthStatus && (
+                <div className="mt-2 text-xs">
+                  <span className="text-muted-foreground">Status: </span>
+                  <span className={oauthStatus.connected ? 'text-green-500 font-medium' : 'text-muted-foreground'}>
+                    {oauthStatus.connected ? 'Connected' : 'Not connected'}
+                  </span>
+                </div>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={handleChatGptSignIn}
+              disabled={signingIn}
+              className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-50 transition-colors"
+            >
+              {signingIn ? 'Signing in...' : 'Sign in'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* OpenAI Base URL Override (OpenAI only) */}
+      {isOpenAI && (
+        <div className="mb-5">
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm font-medium text-foreground">Base URL (optional)</label>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={openAiBaseUrl}
+              onChange={(e) => setOpenAiBaseUrl(e.target.value)}
+              placeholder="https://api.openai.com/v1"
+              className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            />
+            <button
+              onClick={handleSaveBaseUrl}
+              disabled={savingBaseUrl}
+              className={`rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+                baseUrlSaved
+                  ? 'bg-green-500/20 text-green-500'
+                  : 'border border-border bg-background text-foreground hover:bg-muted'
+              }`}
+            >
+              {savingBaseUrl ? 'Saving...' : baseUrlSaved ? 'Saved' : 'Save'}
+            </button>
+          </div>
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            Leave blank for OpenAI. Set to use an OpenAI-compatible endpoint.
+          </p>
+        </div>
+      )}
 
       {/* API Key Section */}
       <div className="space-y-3">
