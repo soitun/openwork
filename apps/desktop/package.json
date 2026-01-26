@@ -133,6 +133,7 @@
       "node_modules/opencode-windows-x64-baseline/bin/opencode.exe",
       "node_modules/opencode-windows-x64-baseline/package.json",
       "node_modules/esbuild/**",
+      "node_modules/get-tsconfig/**",
       "node_modules/tsx/**",
       "node_modules/node-pty/build/**/*.node",
       "node_modules/node-pty/package.json",
