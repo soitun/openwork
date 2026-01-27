@@ -147,6 +147,9 @@ importers:
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.23(postcss@8.5.6)
+      esbuild:
+        specifier: ^0.24.2
+        version: 0.25.12
       electron:
         specifier: ^35.2.1
         version: 35.7.5

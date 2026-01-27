@@ -6,6 +6,7 @@ import { getOllamaConfig } from '../store/appSettings';
 import { getApiKey } from '../store/secureStorage';
 import { getProviderSettings, getActiveProviderModel, getConnectedProviderIds } from '../store/providerSettings';
 import { ensureAzureFoundryProxy } from './azure-foundry-proxy';
+import { getNodePath } from '../utils/bundled-node';
 import type { BedrockCredentials, ProviderId, AzureFoundryCredentials } from '@accomplish/shared';
 
 /**
@@ -66,6 +67,27 @@ function resolveBundledTsxCommand(skillsPath: string): string[] {
 
   console.log('[OpenCode Config] Bundled tsx not found; falling back to npx tsx');
   return ['npx', 'tsx'];
+}
+
+function resolveSkillCommand(
+  tsxCommand: string[],
+  skillsPath: string,
+  skillName: string,
+  sourceRelPath: string,
+  distRelPath: string
+): string[] {
+  const skillDir = path.join(skillsPath, skillName);
+  const distPath = path.join(skillDir, distRelPath);
+
+  if ((app.isPackaged || process.env.OPENWORK_BUNDLED_SKILLS === '1') && fs.existsSync(distPath)) {
+    const nodePath = getNodePath();
+    console.log('[OpenCode Config] Using bundled skill entry:', distPath);
+    return [nodePath, distPath];
+  }
+
+  const sourcePath = path.join(skillDir, sourceRelPath);
+  console.log('[OpenCode Config] Using tsx skill entry:', sourcePath);
+  return [...tsxCommand, sourcePath];
 }
 
 /**
@@ -464,7 +486,6 @@ export async function generateOpenCodeConfig(azureFoundryToken?: string): Promis
   console.log('[OpenCode Config] OpenCode config dir:', openCodeConfigDir);
 
   // Build file-permission MCP server command
-  const filePermissionServerPath = path.join(skillsPath, 'file-permission', 'src', 'index.ts');
 
   // Get connected providers from new settings (with legacy fallback)
   const providerSettings = getProviderSettings();
@@ -776,7 +797,13 @@ export async function generateOpenCodeConfig(azureFoundryToken?: string): Promis
     mcp: {
       'file-permission': {
         type: 'local',
-        command: [...tsxCommand, filePermissionServerPath],
+        command: resolveSkillCommand(
+          tsxCommand,
+          skillsPath,
+          'file-permission',
+          'src/index.ts',
+          'dist/index.mjs'
+        ),
         enabled: true,
         environment: {
           PERMISSION_API_PORT: String(PERMISSION_API_PORT),
@@ -785,7 +812,13 @@ export async function generateOpenCodeConfig(azureFoundryToken?: string): Promis
       },
       'ask-user-question': {
         type: 'local',
-        command: [...tsxCommand, path.join(skillsPath, 'ask-user-question', 'src', 'index.ts')],
+        command: resolveSkillCommand(
+          tsxCommand,
+          skillsPath,
+          'ask-user-question',
+          'src/index.ts',
+          'dist/index.mjs'
+        ),
         enabled: true,
         environment: {
           QUESTION_API_PORT: String(QUESTION_API_PORT),
@@ -794,14 +827,26 @@ export async function generateOpenCodeConfig(azureFoundryToken?: string): Promis
       },
       'dev-browser-mcp': {
         type: 'local',
-        command: [...tsxCommand, path.join(skillsPath, 'dev-browser-mcp', 'src', 'index.ts')],
+        command: resolveSkillCommand(
+          tsxCommand,
+          skillsPath,
+          'dev-browser-mcp',
+          'src/index.ts',
+          'dist/index.mjs'
+        ),
         enabled: true,
         timeout: 30000,
       },
       // Provides complete_task tool - agent must call to signal task completion
       'complete-task': {
         type: 'local',
-        command: [...tsxCommand, path.join(skillsPath, 'complete-task', 'src', 'index.ts')],
+        command: resolveSkillCommand(
+          tsxCommand,
+          skillsPath,
+          'complete-task',
+          'src/index.ts',
+          'dist/index.mjs'
+        ),
         enabled: true,
         timeout: 30000,
       },
