@@ -203,8 +203,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-        env:
-          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
 
       - name: Download Node.js binaries
         run: pnpm -F @accomplish/desktop download:nodejs
