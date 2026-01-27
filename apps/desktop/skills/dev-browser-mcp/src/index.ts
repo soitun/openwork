@@ -4002,6 +4002,9 @@ The page has loaded. Use browser_snapshot() to see the page elements and find in
           };
         }
 
+        const BATCH_TIMEOUT_MS = 120_000; // 2-minute aggregate timeout for entire batch
+        const MAX_RESULT_SIZE_BYTES = 1_048_576; // 1MB per result
+
         const page = await getPage(page_name);
         const batchResults: Array<{
           url: string;
@@ -4010,19 +4013,30 @@ The page has loaded. Use browser_snapshot() to see the page elements and find in
           error?: string;
         }> = [];
 
+        const batchStart = Date.now();
+
         for (const url of urls) {
+          // Check aggregate timeout
+          if (Date.now() - batchStart > BATCH_TIMEOUT_MS) {
+            batchResults.push({ url, status: 'failed', error: 'Batch timeout exceeded (2 min limit)' });
+            continue;
+          }
+
           let fullUrl = url;
           if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://')) {
             fullUrl = 'https://' + fullUrl;
           }
 
+          const remainingTime = BATCH_TIMEOUT_MS - (Date.now() - batchStart);
+          const effectiveTimeout = Math.min(30000, remainingTime);
+
           try {
             // Navigate to the URL
-            await page.goto(fullUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+            await page.goto(fullUrl, { waitUntil: 'domcontentloaded', timeout: effectiveTimeout });
 
             // Wait for specific selector if provided
             if (waitForSelector) {
-              await page.waitForSelector(waitForSelector, { timeout: 10000 }).catch(() => {
+              await page.waitForSelector(waitForSelector, { timeout: Math.min(10000, remainingTime) }).catch(() => {
                 // Continue even if selector not found — extractScript may still work
               });
             }
@@ -4033,6 +4047,17 @@ The page has loaded. Use browser_snapshot() to see the page elements and find in
               const fn = new Function(script);
               return fn();
             }, extractScript);
+
+            // Guard against oversized results
+            const serialized = JSON.stringify(data);
+            if (serialized.length > MAX_RESULT_SIZE_BYTES) {
+              batchResults.push({
+                url: fullUrl,
+                status: 'failed',
+                error: `Result too large: ${serialized.length} bytes (max ${MAX_RESULT_SIZE_BYTES})`,
+              });
+              continue;
+            }
 
             batchResults.push({ url: fullUrl, status: 'success', data });
           } catch (err) {

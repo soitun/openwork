@@ -906,7 +906,7 @@ export async function generateOpenCodeConfig(azureFoundryToken?: string): Promis
     provider: Object.keys(providerConfig).length > 0 ? providerConfig : undefined,
     // Dynamic Context Pruning plugin - prunes obsolete tool outputs from conversation
     // history to reduce token usage (deduplication, supersede writes, purge errors)
-    plugin: ['@tarquinen/opencode-dcp@latest'],
+    plugin: ['@tarquinen/opencode-dcp@^1.2.7'],
     agent: {
       [ACCOMPLISH_AGENT_NAME]: {
         description: 'Browser automation assistant using dev-browser',
