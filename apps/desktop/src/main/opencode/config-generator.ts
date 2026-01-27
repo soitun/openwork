@@ -208,11 +208,17 @@ Example good narration:
 Example bad narration (too terse):
 "Done." or "Navigated." or "Clicked."
 
-- After each action batch, evaluate the result before deciding next steps
-- Use browser_sequence for efficiency when you need to perform multiple actions in quick succession (e.g., filling a form with multiple fields)
-- For multi-step flows, batch 2-6 actions in browser_script or browser_sequence before taking a snapshot
-- Avoid click → snapshot → click loops unless the UI is ambiguous
-- Use browser_snapshot only when you need to inspect the page state to choose the next action
+- Always prefer \`browser_script\` over individual browser_click/browser_type/browser_snapshot calls.
+  browser_script auto-returns page state — you do NOT need a separate browser_snapshot afterward.
+- Batch 2-6 actions per browser_script call. Example — searching a site in ONE call:
+  browser_script(actions=[
+    {"action":"findAndClick","selector":"input[type='search']"},
+    {"action":"keyboard","text":"search query"},
+    {"action":"keyboard","key":"Enter"},
+    {"action":"waitForNavigation"}
+  ])
+- If a CSS selector fails inside browser_script, take a snapshot to get refs, then batch remaining steps using clickByRef/fillByRef inside browser_script — do NOT fall back to individual tool calls.
+- Avoid click → snapshot → click loops. Only call browser_snapshot when you genuinely need to inspect the page to decide what to do next.
 - Do NOT use full_snapshot unless explicitly requested by the user
 - Don't announce server checks or startup - proceed directly to the task
 - Only use AskUserQuestion when you genuinely need user input or decisions

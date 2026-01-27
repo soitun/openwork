@@ -171,41 +171,36 @@ browser_script(actions=[
 2. `browser_snapshot()` - Find refs like [ref=e5]
 3. `browser_script` or `browser_sequence` - Execute remaining actions
 
-## CRITICAL: Verification-Driven Workflow
+## CRITICAL: Verify After Batches, Not Individual Actions
 
-**After EVERY action, verify it succeeded before proceeding:**
+**Batch first, then verify.** Do NOT snapshot after every single click or type — batch 2-6 actions in `browser_script`, then check the auto-returned page state.
 
-1. **Navigate** → Take snapshot to confirm page loaded
-2. **Click** → Take snapshot OR use browser_is_visible to confirm expected change
-3. **Type** → Use browser_get_text to confirm text was entered
-4. **Form actions** → Use browser_is_checked to confirm checkbox state
+**Correct workflow:**
+1. Batch multiple actions in `browser_script` (navigate, fill, click, wait)
+2. Read the auto-returned snapshot to verify the batch succeeded
+3. If something went wrong, take a fresh `browser_snapshot()` and adapt
 
-**Example verification flow:**
-
+**Example — fill and submit a form in ONE call:**
+```json
+browser_script(actions=[
+  {"action": "findAndFill", "selector": "#email", "text": "user@example.com"},
+  {"action": "findAndFill", "selector": "#password", "text": "secret"},
+  {"action": "findAndClick", "selector": "button[type='submit']"},
+  {"action": "waitForNavigation"}
+])
 ```
-# Click a submit button
-browser_click(ref="e5")
+→ The auto-returned snapshot tells you if the form submitted. No separate verification needed.
 
-# VERIFY: Check if success message appeared
-browser_is_visible(selector=".success-message")
-# Output: true
-
-# If false, the action may have failed - investigate before proceeding
-browser_snapshot()  # See what actually happened
-```
-
-**Why this matters:**
-- Pages change dynamically - refs become stale
-- Actions can fail silently (overlays, loading states)
-- Verification tells you WHEN to proceed vs retry
-- Without verification, agents assume success and give up when things go wrong
+**When to verify individually (exceptions):**
+- The UI is highly dynamic (elements appear/disappear unpredictably)
+- A previous browser_script batch failed partway through
+- You need to read page content to decide which element to interact with next
 
 **When verification fails:**
-1. Take a fresh snapshot to see current page state
-2. Look for error messages, loading indicators, or overlays
-3. Address the blocker (dismiss modal, wait for load, etc.)
-4. Retry the original action
-5. Verify again
+1. Read the auto-returned error state from browser_script (it captures page state on failure)
+2. Take a fresh `browser_snapshot()` to see what actually happened
+3. Address the blocker (dismiss modal, wait for load, retry with different selector)
+4. Batch the remaining steps in a new `browser_script` call — do NOT fall back to individual tools
 
 ## Error Recovery
 
@@ -220,6 +215,21 @@ When actions fail, the error message will tell you what to do:
 | "Page closed" | Tab was closed | Use browser_tabs(action="list") to find correct tab |
 
 **Never give up on first failure.** Take a snapshot, understand what happened, then adapt.
+
+**When browser_script CSS selectors fail:**
+If `findAndClick` or `findAndFill` can't find an element, don't abandon browser_script. Instead:
+1. Take a `browser_snapshot()` to get refs
+2. Use `clickByRef`/`fillByRef` inside a **new browser_script call** to stay batched
+
+```json
+// CSS selector failed — fall back to ref-based batching (NOT individual tools)
+browser_script(actions=[
+  {"action": "clickByRef", "ref": "e212"},
+  {"action": "keyboard", "text": "Hot Springs, AR"},
+  {"action": "keyboard", "key": "Enter"},
+  {"action": "waitForNavigation"}
+])
+```
 
 ## CRITICAL: Tab Awareness After Clicks
 
