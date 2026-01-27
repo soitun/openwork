@@ -140,16 +140,15 @@ export function generateTestLocalAgentConfig(): string {
         },
         timeout: 10000,
       },
-      'dev-browser-mcp': {
+      'playwright-mcp': {
         type: 'local',
-        command: ['npx', 'tsx', path.join(skillsPath, 'dev-browser-mcp', 'src', 'index.ts')],
+        command: [
+          'npx',
+          '@playwright/mcp@latest',
+          '--cdp-endpoint',
+          `http://127.0.0.1:${TEST_LOCAL_AGENT_CDP_PORT}`,
+        ],
         enabled: true,
-        environment: {
-          // Override ports for isolation
-          DEV_BROWSER_PORT: String(TEST_LOCAL_AGENT_HTTP_PORT),
-          DEV_BROWSER_CDP_PORT: String(TEST_LOCAL_AGENT_CDP_PORT),
-          DEV_BROWSER_PROFILE: TEST_LOCAL_AGENT_CHROME_PROFILE,
-        },
         timeout: 30000,
       },
     },

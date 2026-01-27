@@ -27,6 +27,10 @@ export interface TaskConfig {
   outputSchema?: object;
   /** Session ID for resuming */
   sessionId?: string;
+  /** Internal run classification for enforcement routing */
+  runKind?: 'chat' | 'task';
+  /** Whether to enforce completion (internal) */
+  enforceCompletion?: boolean;
 }
 
 export interface Task {
@@ -36,6 +40,10 @@ export interface Task {
   summary?: string;
   status: TaskStatus;
   sessionId?: string;
+  /** Internal run classification for enforcement routing */
+  runKind?: 'chat' | 'task';
+  /** Whether completion enforcement was enabled */
+  enforceCompletion?: boolean;
   messages: TaskMessage[];
   createdAt: string;
   startedAt?: string;

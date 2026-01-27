@@ -465,6 +465,8 @@ export class TaskManager {
       id: taskId,
       prompt: config.prompt,
       status: 'queued',
+      runKind: config.runKind,
+      enforceCompletion: config.enforceCompletion,
       messages: [],
       createdAt: new Date().toISOString(),
     };
@@ -560,6 +562,8 @@ export class TaskManager {
       id: taskId,
       prompt: config.prompt,
       status: 'running',
+      runKind: config.runKind,
+      enforceCompletion: config.enforceCompletion,
       messages: [],
       createdAt: new Date().toISOString(),
     };

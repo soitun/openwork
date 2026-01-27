@@ -825,6 +825,7 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
         const toolInput = message.part.input;
 
         console.log('[OpenCode Adapter] Tool call:', toolName);
+        this.maybeEnableCompletionEnforcer(toolName);
 
         // Mark first tool received and cancel waiting transition timer
         if (!this.hasReceivedFirstTool) {
@@ -863,6 +864,8 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
         const toolUseName = toolUseMessage.part.tool || 'unknown';
         const toolUseInput = toolUseMessage.part.state?.input;
         const toolUseOutput = toolUseMessage.part.state?.output || '';
+
+        this.maybeEnableCompletionEnforcer(toolUseName);
 
         // Mark first tool received and cancel waiting transition timer
         if (!this.hasReceivedFirstTool) {
@@ -995,6 +998,40 @@ export class OpenCodeAdapter extends EventEmitter<OpenCodeAdapterEvents> {
     };
 
     this.emit('permission-request', permissionRequest);
+  }
+
+  private normalizeToolName(toolName: string): string {
+    const underscoreIndex = toolName.indexOf('_');
+    if (underscoreIndex > 0) {
+      const prefix = toolName.slice(0, underscoreIndex);
+      if (prefix.includes('-')) {
+        return toolName.slice(underscoreIndex + 1);
+      }
+    }
+    return toolName;
+  }
+
+  private shouldAutoEnableEnforcer(toolName: string): boolean {
+    const normalized = this.normalizeToolName(toolName);
+    if (normalized === 'complete_task' || normalized === 'todowrite') return false;
+    if (normalized === 'AskUserQuestion') return false;
+    if (normalized === 'report_checkpoint' || normalized === 'report_thought') return false;
+    if (normalized === 'request_file_permission') return true;
+    if (normalized === 'dev_browser_execute') return true;
+    if (normalized.startsWith('browser_')) return true;
+    return false;
+  }
+
+  private maybeEnableCompletionEnforcer(toolName: string): void {
+    if (this.enforceCompletion) return;
+    if (!this.shouldAutoEnableEnforcer(toolName)) return;
+    this.enforceCompletion = true;
+    this.runKind = 'task';
+    this.emit('debug', {
+      type: 'enforcer',
+      message: 'Auto-enabled completion enforcement due to tool usage',
+      data: { toolName },
+    });
   }
 
   /**

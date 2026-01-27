@@ -25,6 +25,7 @@ import {
   clearHistory,
 } from '../store/taskHistory';
 import { generateTaskSummary } from '../services/summarizer';
+import { classifyRunKind } from '../services/runKindClassifier';
 import {
   storeApiKey,
   getApiKey,
@@ -272,6 +273,12 @@ function validateTaskConfig(config: TaskConfig): TaskConfig {
   if (config.outputSchema && typeof config.outputSchema === 'object') {
     validated.outputSchema = config.outputSchema;
   }
+  if (config.runKind === 'chat' || config.runKind === 'task') {
+    validated.runKind = config.runKind;
+  }
+  if (typeof config.enforceCompletion === 'boolean') {
+    validated.enforceCompletion = config.enforceCompletion;
+  }
 
   return validated;
 }
@@ -317,10 +324,11 @@ export function registerIPCHandlers(): void {
     const window = assertTrustedWindow(BrowserWindow.fromWebContents(event.sender));
     const sender = event.sender;
     const validatedConfig = validateTaskConfig(config);
+    const isMockMode = isMockTaskEventsEnabled();
 
     // Check for ready provider before starting task (skip in E2E mock mode)
     // This is a backend safety check - the UI should also check before calling
-    if (!isMockTaskEventsEnabled() && !hasReadyProvider()) {
+    if (!isMockMode && !hasReadyProvider()) {
       throw new Error('No provider is ready. Please connect a provider and select a model in Settings.');
     }
 
@@ -335,7 +343,13 @@ export function registerIPCHandlers(): void {
     const taskId = createTaskId();
 
     // E2E Mock Mode: Return mock task and emit simulated events
-    if (isMockTaskEventsEnabled()) {
+    if (isMockMode) {
+      if (!validatedConfig.runKind) {
+        validatedConfig.runKind = 'task';
+      }
+      if (typeof validatedConfig.enforceCompletion !== 'boolean') {
+        validatedConfig.enforceCompletion = validatedConfig.runKind === 'task';
+      }
       const mockTask = createMockTask(taskId, validatedConfig.prompt);
       const scenario = detectScenarioFromPrompt(validatedConfig.prompt);
 
@@ -351,6 +365,17 @@ export function registerIPCHandlers(): void {
       });
 
       return mockTask;
+    }
+
+    if (!validatedConfig.runKind) {
+      const decision = await classifyRunKind(validatedConfig.prompt);
+      validatedConfig.runKind = decision.kind;
+      validatedConfig.enforceCompletion = decision.kind === 'task';
+      console.log(
+        `[RunKind] task:start classified as ${decision.kind} (confidence ${decision.confidence.toFixed(2)}, source ${decision.source})`
+      );
+    } else if (typeof validatedConfig.enforceCompletion !== 'boolean') {
+      validatedConfig.enforceCompletion = validatedConfig.runKind === 'task';
     }
 
     // Setup event forwarding to renderer
@@ -594,6 +619,13 @@ export function registerIPCHandlers(): void {
       ? sanitizeString(existingTaskId, 'taskId', 128)
       : undefined;
 
+    const runKindDecision = await classifyRunKind(validatedPrompt);
+    const runKind = runKindDecision.kind;
+    const enforceCompletion = runKindDecision.kind === 'task';
+    console.log(
+      `[RunKind] session:resume classified as ${runKindDecision.kind} (confidence ${runKindDecision.confidence.toFixed(2)}, source ${runKindDecision.source})`
+    );
+
     // Check for ready provider before resuming session (skip in E2E mock mode)
     // This is a backend safety check - the UI should also check before calling
     if (!isMockTaskEventsEnabled() && !hasReadyProvider()) {
@@ -718,6 +750,8 @@ export function registerIPCHandlers(): void {
       prompt: validatedPrompt,
       sessionId: validatedSessionId,
       taskId,
+      runKind,
+      enforceCompletion,
     }, callbacks);
 
     // Update task status in history (whether running or queued)

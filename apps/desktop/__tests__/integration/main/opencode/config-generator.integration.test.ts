@@ -224,7 +224,7 @@ describe('OpenCode Config Generator Integration', () => {
       const agent = config.agent['accomplish'];
 
       expect(agent).toBeDefined();
-      expect(agent.description).toBe('Browser automation assistant using dev-browser');
+      expect(agent.description).toBe('Browser automation assistant using Playwright MCP');
       expect(agent.mode).toBe('primary');
       expect(typeof agent.prompt).toBe('string');
       expect(agent.prompt.length).toBeGreaterThan(0);
@@ -305,7 +305,8 @@ describe('OpenCode Config Generator Integration', () => {
       const prompt = config.agent['accomplish'].prompt;
 
       // Should contain browser guidance (detailed tool docs are now in SKILL.md)
-      expect(prompt).toContain('browser_script');
+      expect(prompt).toContain('browser_run_code');
+      expect(prompt).toContain('browser_fill_form');
       expect(prompt).toContain('browser_*');
       expect(prompt).toContain('Browser Automation');
     });

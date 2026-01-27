@@ -6,6 +6,7 @@ import { getOllamaConfig, getLMStudioConfig } from '../store/appSettings';
 import { getApiKey } from '../store/secureStorage';
 import { getProviderSettings, getActiveProviderModel, getConnectedProviderIds } from '../store/providerSettings';
 import { ensureAzureFoundryProxy } from './azure-foundry-proxy';
+import { DEV_BROWSER_CDP_PORT } from '@accomplish/shared';
 import type { BedrockCredentials, ProviderId, AzureFoundryCredentials } from '@accomplish/shared';
 
 /**
@@ -16,9 +17,7 @@ export const ACCOMPLISH_AGENT_NAME = 'accomplish';
 /**
  * System prompt for the Accomplish agent.
  *
- * Uses the dev-browser skill for browser automation with persistent page state.
- *
- * @see https://github.com/SawyerHood/dev-browser
+ * Uses Playwright MCP for browser automation, attached via CDP to the existing browser.
  */
 /**
  * Get the skills directory path (contains MCP servers and SKILL.md files)
@@ -192,7 +191,7 @@ CORRECT: Output plan FIRST, call todowrite SECOND, then start working
 <behavior>
 - Use AskUserQuestion tool for clarifying questions before starting ambiguous tasks
 - **NEVER use shell commands (open, xdg-open, start, subprocess, webbrowser) to open browsers or URLs** - these open the user's default browser, not the automation-controlled Chrome. ALL browser operations MUST use browser_* MCP tools.
-- For multi-step browser workflows, prefer \`browser_script\` over individual tools - it's faster and auto-returns page state.
+- For multi-step browser workflows, prefer \`browser_run_code\` or \`browser_fill_form\` to reduce tool calls.
 
 **BROWSER ACTION VERBOSITY - Be descriptive about web interactions:**
 - Before each browser action, briefly explain what you're about to do in user terms
@@ -209,7 +208,7 @@ Example bad narration (too terse):
 "Done." or "Navigated." or "Clicked."
 
 - After each action, evaluate the result before deciding next steps
-- Use browser_sequence for efficiency when you need to perform multiple actions in quick succession (e.g., filling a form with multiple fields)
+- Use browser_run_code for efficiency when you need to perform multiple actions in quick succession (e.g., filling a form with multiple fields)
 - Don't announce server checks or startup - proceed directly to the task
 - Only use AskUserQuestion when you genuinely need user input or decisions
 
@@ -783,7 +782,7 @@ export async function generateOpenCodeConfig(azureFoundryToken?: string): Promis
     provider: Object.keys(providerConfig).length > 0 ? providerConfig : undefined,
     agent: {
       [ACCOMPLISH_AGENT_NAME]: {
-        description: 'Browser automation assistant using dev-browser',
+        description: 'Browser automation assistant using Playwright MCP',
         prompt: systemPrompt,
         mode: 'primary',
       },
@@ -809,9 +808,14 @@ export async function generateOpenCodeConfig(azureFoundryToken?: string): Promis
         },
         timeout: 30000,
       },
-      'dev-browser-mcp': {
+      'playwright-mcp': {
         type: 'local',
-        command: ['npx', 'tsx', path.join(skillsPath, 'dev-browser-mcp', 'src', 'index.ts')],
+        command: [
+          'npx',
+          '@playwright/mcp@latest',
+          '--cdp-endpoint',
+          `http://127.0.0.1:${DEV_BROWSER_CDP_PORT}`,
+        ],
         enabled: true,
         timeout: 30000,
       },

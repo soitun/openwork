@@ -19,6 +19,7 @@ import ReactMarkdown from 'react-markdown';
 import { StreamingText } from '../components/ui/streaming-text';
 import { isWaitingForUser } from '../lib/waiting-detection';
 import { BrowserScriptCard } from '../components/BrowserScriptCard';
+import { BrowserRunCodeCard } from '../components/BrowserRunCodeCard';
 import loadingSymbol from '/assets/loading-symbol.svg';
 import SettingsDialog from '../components/layout/SettingsDialog';
 import { TodoSidebar } from '../components/TodoSidebar';
@@ -63,12 +64,16 @@ const TOOL_PROGRESS_MAP: Record<string, { label: string; icon: typeof FileText }
   browser_click: { label: 'Clicking', icon: MousePointer2 },
   browser_type: { label: 'Typing', icon: Type },
   browser_screenshot: { label: 'Taking screenshot', icon: Image },
+  browser_take_screenshot: { label: 'Taking screenshot', icon: Image },
   browser_evaluate: { label: 'Running script', icon: Code },
+  browser_run_code: { label: 'Running script', icon: Code },
   browser_keyboard: { label: 'Pressing keys', icon: Keyboard },
+  browser_press_key: { label: 'Pressing keys', icon: Keyboard },
   browser_scroll: { label: 'Scrolling', icon: ArrowUpDown },
   browser_hover: { label: 'Hovering', icon: MousePointer2 },
   browser_select: { label: 'Selecting option', icon: ListChecks },
   browser_wait: { label: 'Waiting', icon: Clock },
+  browser_wait_for: { label: 'Waiting', icon: Clock },
   browser_tabs: { label: 'Managing tabs', icon: Layers },
   browser_pages: { label: 'Getting pages', icon: Layers },
   browser_highlight: { label: 'Highlighting', icon: Highlighter },
@@ -82,6 +87,11 @@ const TOOL_PROGRESS_MAP: Record<string, { label: string; icon: typeof FileText }
   browser_iframe: { label: 'Switching frame', icon: Frame },
   browser_canvas_type: { label: 'Typing in canvas', icon: Type },
   browser_script: { label: 'Browser Actions', icon: Globe },
+  browser_fill_form: { label: 'Filling form', icon: ListChecks },
+  browser_handle_dialog: { label: 'Handling dialog', icon: AlertTriangle },
+  browser_console_messages: { label: 'Reading console', icon: Terminal },
+  browser_network_requests: { label: 'Inspecting network', icon: Download },
+  browser_install: { label: 'Installing browser', icon: Download },
   // Utility MCP tools
   request_file_permission: { label: 'Requesting permission', icon: ShieldCheck },
   AskUserQuestion: { label: 'Asking question', icon: MessageCircleQuestion },
@@ -91,7 +101,7 @@ const TOOL_PROGRESS_MAP: Record<string, { label: string; icon: typeof FileText }
 
 // Extract base tool name from MCP-prefixed tool names
 // MCP tools are prefixed as "servername_toolname", e.g.:
-//   "dev-browser-mcp_browser_navigate" -> "browser_navigate"
+//   "playwright-mcp_browser_navigate" -> "browser_navigate"
 //   "file-permission_request_file_permission" -> "request_file_permission"
 function getBaseToolName(toolName: string): string {
   // Try progressively stripping prefixes at each underscore position
@@ -756,8 +766,8 @@ export default function ExecutionPage() {
 
             <AnimatePresence>
               {currentTask.status === 'running' && !permissionRequest && (
-                /* Skip thinking indicator for browser_script - it's shown in the message bubble */
-                currentTool?.endsWith('browser_script') ? null : (
+                /* Skip thinking indicator for browser_script/browser_run_code - it's shown in the message bubble */
+                (currentTool?.endsWith('browser_script') || currentTool?.endsWith('browser_run_code')) ? null : (
                   <motion.div
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -1332,6 +1342,12 @@ const MessageBubble = memo(function MessageBubble({ message, shouldStream = fals
   const toolName = message.toolName || message.content?.match(/Using tool: (\w+)/)?.[1];
   const toolDisplayInfo = toolName ? getToolDisplayInfo(toolName) : undefined;
   const ToolIcon = toolDisplayInfo?.icon;
+  const runCodeInput = message.toolInput as { code?: unknown; script?: unknown; source?: unknown } | undefined;
+  const runCodeValue =
+    (typeof runCodeInput?.code === 'string' && runCodeInput.code) ||
+    (typeof runCodeInput?.script === 'string' && runCodeInput.script) ||
+    (typeof runCodeInput?.source === 'string' && runCodeInput.source) ||
+    '';
 
   // Mark stream as complete when shouldStream becomes false
   useEffect(() => {
@@ -1394,6 +1410,11 @@ const MessageBubble = memo(function MessageBubble({ message, shouldStream = fals
       {isTool && toolName?.endsWith('browser_script') && (message.toolInput as { actions?: unknown[] })?.actions ? (
         <BrowserScriptCard
           actions={(message.toolInput as { actions: Array<{ action: string; url?: string; selector?: string; ref?: string; text?: string; key?: string }> }).actions}
+          isRunning={isLastMessage && isRunning}
+        />
+      ) : isTool && toolName?.endsWith('browser_run_code') && runCodeValue ? (
+        <BrowserRunCodeCard
+          code={runCodeValue}
           isRunning={isLastMessage && isRunning}
         />
       ) : (
