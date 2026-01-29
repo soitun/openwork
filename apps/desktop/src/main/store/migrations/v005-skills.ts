@@ -15,6 +15,7 @@ export const migration: Migration = {
         source TEXT NOT NULL CHECK (source IN ('official', 'community', 'custom')),
         is_enabled INTEGER NOT NULL DEFAULT 1,
         is_verified INTEGER NOT NULL DEFAULT 0,
+        is_hidden INTEGER NOT NULL DEFAULT 0,
         file_path TEXT NOT NULL,
         github_url TEXT,
         updated_at TEXT NOT NULL
