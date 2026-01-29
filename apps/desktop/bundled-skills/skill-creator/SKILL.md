@@ -98,7 +98,8 @@ Files not intended to be loaded into context, but used within the output.
 2. **Plan contents** - Identify what scripts, references, and assets would be helpful
 3. **Create the skill directory** - Set up the folder structure
 4. **Write SKILL.md** - Include frontmatter and instructions
-5. **Test and iterate** - Use the skill on real tasks and improve
+5. **Verify creation** - MANDATORY: Confirm file exists at correct path with valid content
+6. **Test and iterate** - Use the skill on real tasks and improve
 
 ### Step 1: Understanding the Skill
 
@@ -207,12 +208,33 @@ command: /awesome
 ---
 ```
 
-### After Creating
+### After Creating - MANDATORY VERIFICATION
 
-Once you write the SKILL.md file to the correct location, tell the user:
-- The skill has been saved to their skills directory
-- Click the **refresh button** (↻) in Settings > Skills to detect the new skill immediately
-- They can enable/disable or delete custom skills from the Settings panel
+**IMPORTANT:** You MUST verify the skill was created correctly before telling the user it's complete.
+
+#### Verification Steps (Required)
+
+1. **Read the file** - Use the Read tool to read the SKILL.md file you just created. This confirms:
+   - The file actually exists
+   - The content was written correctly
+
+2. **Verify the path** - Confirm the file path matches the required location:
+   - macOS: `~/Library/Application Support/Openwork/skills/<skill-name>/SKILL.md`
+   - Windows: `%APPDATA%\Openwork\skills\<skill-name>\SKILL.md`
+   - Linux: `~/.config/Openwork/skills/<skill-name>/SKILL.md`
+
+3. **Validate frontmatter** - Confirm the YAML frontmatter contains:
+   - `name`: Present and non-empty
+   - `description`: Present and non-empty
+   - No forbidden fields (`verified: true` or `hidden: true`)
+
+4. **Report results** - Only after ALL checks pass, tell the user:
+   - The skill has been saved to their skills directory
+   - Show the exact path where it was saved
+   - Click the **refresh button** (↻) in Settings > Skills or in the + menu to detect the new skill
+   - They can enable/disable or delete custom skills from the Settings panel
+
+**If verification fails:** Do NOT tell the user the skill was created. Instead, diagnose the issue and fix it before re-verifying.
 
 ## Example: Creating a Simple Skill
 
