@@ -14,6 +14,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { SkillsSubmenu } from './SkillsSubmenu';
+import { CreateSkillModal } from '@/components/skills/CreateSkillModal';
 
 interface PlusMenuProps {
   onSkillSelect: (command: string) => void;
@@ -24,6 +25,8 @@ interface PlusMenuProps {
 export function PlusMenu({ onSkillSelect, onOpenSettings, disabled }: PlusMenuProps) {
   const [open, setOpen] = useState(false);
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Fetch enabled skills when dropdown opens
   useEffect(() => {
@@ -35,6 +38,20 @@ export function PlusMenu({ onSkillSelect, onOpenSettings, disabled }: PlusMenuPr
     }
   }, [open]);
 
+  const handleRefresh = async () => {
+    if (!window.accomplish) return;
+    setIsRefreshing(true);
+    try {
+      await window.accomplish.resyncSkills();
+      const updatedSkills = await window.accomplish.getEnabledSkills();
+      setSkills(updatedSkills);
+    } catch (err) {
+      console.error('Failed to refresh skills:', err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   const handleSkillSelect = (command: string) => {
     onSkillSelect(command);
     setOpen(false);
@@ -45,7 +62,14 @@ export function PlusMenu({ onSkillSelect, onOpenSettings, disabled }: PlusMenuPr
     onOpenSettings('skills');
   };
 
+  const handleCreateNewSkill = () => {
+    setOpen(false);
+    setCreateModalOpen(true);
+  };
+
   return (
+    <>
+      <CreateSkillModal open={createModalOpen} onOpenChange={setCreateModalOpen} />
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <button
@@ -83,10 +107,14 @@ export function PlusMenu({ onSkillSelect, onOpenSettings, disabled }: PlusMenuPr
               skills={skills}
               onSkillSelect={handleSkillSelect}
               onManageSkills={handleManageSkills}
+              onCreateNewSkill={handleCreateNewSkill}
+              onRefresh={handleRefresh}
+              isRefreshing={isRefreshing}
             />
           </DropdownMenuSubContent>
         </DropdownMenuSub>
       </DropdownMenuContent>
     </DropdownMenu>
+    </>
   );
 }

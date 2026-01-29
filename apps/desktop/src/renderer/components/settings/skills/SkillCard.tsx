@@ -117,7 +117,7 @@ export const SkillCard = memo(function SkillCard({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
-              className="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100"
+              className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               aria-label="Skill options"
             >
               <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">

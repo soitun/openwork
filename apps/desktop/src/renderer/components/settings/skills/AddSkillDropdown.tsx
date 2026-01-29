@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useTaskStore } from '@/stores/taskStore';
+import { CreateSkillModal } from '@/components/skills/CreateSkillModal';
 
 interface AddSkillDropdownProps {
   onSkillAdded?: () => void;
@@ -26,11 +26,10 @@ interface AddSkillDropdownProps {
 
 export function AddSkillDropdown({ onSkillAdded, onClose }: AddSkillDropdownProps) {
   const [isGitHubDialogOpen, setIsGitHubDialogOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [gitHubUrl, setGitHubUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const { openLauncherWithPrompt } = useTaskStore();
 
   const handleUploadSkill = async () => {
     if (!window.accomplish) return;
@@ -72,9 +71,7 @@ export function AddSkillDropdown({ onSkillAdded, onClose }: AddSkillDropdownProp
   };
 
   const handleBuildWithAI = () => {
-    // Close the settings dialog and open the task launcher with /create-skills
-    onClose?.();
-    openLauncherWithPrompt('/create-skills ');
+    setIsCreateModalOpen(true);
   };
 
   const handleOpenGitHubDialog = () => {
@@ -93,6 +90,7 @@ export function AddSkillDropdown({ onSkillAdded, onClose }: AddSkillDropdownProp
 
   return (
     <>
+      <CreateSkillModal open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen} onSettingsClose={onClose} />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button size="sm" className="gap-1.5">

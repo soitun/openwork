@@ -10,9 +10,12 @@ interface SkillsSubmenuProps {
   skills: Skill[];
   onSkillSelect: (command: string) => void;
   onManageSkills: () => void;
+  onCreateNewSkill: () => void;
+  onRefresh: () => void;
+  isRefreshing?: boolean;
 }
 
-export function SkillsSubmenu({ skills, onSkillSelect, onManageSkills }: SkillsSubmenuProps) {
+export function SkillsSubmenu({ skills, onSkillSelect, onManageSkills, onCreateNewSkill, onRefresh, isRefreshing }: SkillsSubmenuProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredSkills = useMemo(() => {
@@ -95,22 +98,57 @@ export function SkillsSubmenu({ skills, onSkillSelect, onManageSkills }: SkillsS
 
       <DropdownMenuSeparator />
 
-      {/* Manage Skills Link */}
-      <button
-        onClick={onManageSkills}
-        className="flex items-center justify-between px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-      >
-        Manage Skills
-        <svg
-          className="h-3.5 w-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
+      {/* Footer Actions */}
+      <div className="flex gap-2 p-2.5">
+        <button
+          onClick={onCreateNewSkill}
+          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] text-muted-foreground bg-secondary border border-border rounded-md hover:bg-accent hover:text-foreground transition-colors"
         >
-          <path d="M7 17L17 7M17 7H7M17 7V17" />
-        </svg>
-      </button>
+          <svg
+            className="h-3 w-3"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          Create New
+        </button>
+        <button
+          onClick={onManageSkills}
+          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] text-muted-foreground bg-secondary border border-border rounded-md hover:bg-accent hover:text-foreground transition-colors"
+        >
+          <svg
+            className="h-3 w-3"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+          Manage
+        </button>
+        <button
+          onClick={onRefresh}
+          disabled={isRefreshing}
+          className="flex items-center justify-center px-2 py-2 text-muted-foreground bg-secondary border border-border rounded-md hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
+          title="Refresh skills"
+        >
+          <svg
+            className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''}`}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+            <path d="M21 3v5h-5" />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 }
