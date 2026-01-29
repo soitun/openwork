@@ -12,12 +12,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { settingsVariants, settingsTransitions } from '@/lib/animations';
 import { SkillCard } from './SkillCard';
-import { MOCK_SKILLS } from './mockSkills';
 
 type FilterType = 'all' | 'active' | 'official';
 
 export function SkillsPanel() {
-  const [skills, setSkills] = useState<Skill[]>(MOCK_SKILLS);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<FilterType>('all');
   const [isAtBottom, setIsAtBottom] = useState(false);
@@ -66,16 +66,51 @@ export function SkillsPanel() {
     checkScrollPosition();
   }, [filteredSkills, checkScrollPosition]);
 
-  // Handlers
-  const handleToggle = useCallback((id: string) => {
-    setSkills((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, isEnabled: !s.isEnabled } : s))
-    );
+  // Load skills on mount
+  useEffect(() => {
+    if (!window.accomplish) {
+      console.error('Accomplish API not available');
+      setLoading(false);
+      return;
+    }
+    window.accomplish
+      .getSkills()
+      .then(setSkills)
+      .catch((err: unknown) => console.error('Failed to load skills:', err))
+      .finally(() => setLoading(false));
   }, []);
 
-  const handleDelete = useCallback((id: string) => {
-    setSkills((prev) => prev.filter((s) => s.id !== id));
-  }, []);
+  // Handlers
+  const handleToggle = useCallback(async (id: string) => {
+    const skill = skills.find((s) => s.id === id);
+    if (!skill || !window.accomplish) return;
+
+    try {
+      await window.accomplish.setSkillEnabled(id, !skill.isEnabled);
+      setSkills((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, isEnabled: !s.isEnabled } : s))
+      );
+    } catch (err) {
+      console.error('Failed to toggle skill:', err);
+    }
+  }, [skills]);
+
+  const handleDelete = useCallback(async (id: string) => {
+    const skill = skills.find((s) => s.id === id);
+    if (!skill || !window.accomplish) return;
+
+    if (skill.source === 'official') {
+      console.warn('Cannot delete official skills');
+      return;
+    }
+
+    try {
+      await window.accomplish.deleteSkill(id);
+      setSkills((prev) => prev.filter((s) => s.id !== id));
+    } catch (err) {
+      console.error('Failed to delete skill:', err);
+    }
+  }, [skills]);
 
   const handleConfigure = useCallback((id: string) => {
     // TODO: Open configuration modal
@@ -87,6 +122,14 @@ export function SkillsPanel() {
   }, []);
 
   const filterLabel = filter === 'all' ? 'All types' : filter === 'active' ? 'Active' : 'Official';
+
+  if (loading) {
+    return (
+      <div className="flex h-[280px] items-center justify-center">
+        <div className="text-sm text-muted-foreground">Loading skills...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col">
