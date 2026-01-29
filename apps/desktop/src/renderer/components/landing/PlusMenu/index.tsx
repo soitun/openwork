@@ -1,7 +1,7 @@
 // apps/desktop/src/renderer/components/landing/PlusMenu/index.tsx
 
 import { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Paperclip } from 'lucide-react';
 import type { Skill } from '@accomplish/shared';
 import {
   DropdownMenu,
@@ -10,6 +10,8 @@ import {
   DropdownMenuSub,
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { SkillsSubmenu } from './SkillsSubmenu';
 
@@ -23,15 +25,15 @@ export function PlusMenu({ onSkillSelect, onOpenSettings, disabled }: PlusMenuPr
   const [open, setOpen] = useState(false);
   const [skills, setSkills] = useState<Skill[]>([]);
 
-  // Fetch enabled skills on mount
+  // Fetch enabled skills when dropdown opens
   useEffect(() => {
-    if (window.accomplish) {
+    if (open && window.accomplish) {
       window.accomplish
         .getEnabledSkills()
         .then(setSkills)
         .catch((err) => console.error('Failed to load skills:', err));
     }
-  }, []);
+  }, [open]);
 
   const handleSkillSelect = (command: string) => {
     onSkillSelect(command);
@@ -55,6 +57,14 @@ export function PlusMenu({ onSkillSelect, onOpenSettings, disabled }: PlusMenuPr
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-[200px]">
+        <DropdownMenuItem disabled className="text-muted-foreground/60">
+          <Paperclip className="h-4 w-4 mr-2 shrink-0" />
+          Attach Files
+          <span className="ml-auto pl-4 text-[10px] text-muted-foreground/50 whitespace-nowrap">Soon</span>
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <svg
