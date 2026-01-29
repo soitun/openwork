@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { settingsVariants, settingsTransitions } from '@/lib/animations';
 import { SkillCard } from './SkillCard';
-import openworkFavicon from '/assets/openwork-favicon.png';
 
 type FilterType = 'all' | 'active' | 'inactive' | 'official';
 
@@ -219,11 +218,7 @@ export function SkillsPanel({ refreshTrigger }: SkillsPanelProps) {
               Inactive <span className="text-muted-foreground">{filterCounts.inactive}</span>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setFilter('official')} className="flex justify-between">
-              <span className="flex items-center gap-1.5">
-                <img src={openworkFavicon} alt="" className="h-3.5 w-3.5" />
-                By Openwork
-              </span>
-              <span className="text-muted-foreground">{filterCounts.official}</span>
+              By Openwork <span className="text-muted-foreground">{filterCounts.official}</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
