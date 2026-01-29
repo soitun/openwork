@@ -8,6 +8,7 @@ import { getProviderSettings, getActiveProviderModel, getConnectedProviderIds } 
 import { ensureAzureFoundryProxy } from './azure-foundry-proxy';
 import { ensureMoonshotProxy } from './moonshot-proxy';
 import { getNodePath } from '../utils/bundled-node';
+import { skillsManager } from '../skills';
 import type { BedrockCredentials, ProviderId, ZaiCredentials, AzureFoundryCredentials } from '@accomplish/shared';
 
 /**
@@ -889,6 +890,28 @@ export async function generateOpenCodeConfig(azureFoundryToken?: string): Promis
   }
 
   const tsxCommand = resolveBundledTsxCommand(skillsPath);
+
+  // Get enabled skills and add to system prompt
+  const enabledSkills = await skillsManager.getEnabled();
+
+  let skillsSection = '';
+  if (enabledSkills.length > 0) {
+    skillsSection = `
+
+<available-skills>
+The following skills are available. When a task matches a skill's description, read its SKILL.md file for detailed instructions using the Read tool.
+
+${enabledSkills.map(s => `- **${s.name}** (${s.command}): ${s.description}
+  File: ${s.filePath}`).join('\n\n')}
+
+To use a skill: Read the SKILL.md file when you need its instructions for the current task.
+</available-skills>
+`;
+  }
+
+  // Combine base system prompt with skills section
+  const fullSystemPrompt = systemPrompt + skillsSection;
+
   console.log('[OpenCode Config] MCP build marker: edited by codex');
   const config: OpenCodeConfig = {
     $schema: 'https://opencode.ai/config.json',
@@ -910,7 +933,7 @@ export async function generateOpenCodeConfig(azureFoundryToken?: string): Promis
     agent: {
       [ACCOMPLISH_AGENT_NAME]: {
         description: 'Browser automation assistant using dev-browser',
-        prompt: systemPrompt,
+        prompt: fullSystemPrompt,
         mode: 'primary',
       },
     },
