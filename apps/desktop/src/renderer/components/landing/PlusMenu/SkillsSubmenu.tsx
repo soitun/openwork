@@ -1,6 +1,7 @@
 // apps/desktop/src/renderer/components/landing/PlusMenu/SkillsSubmenu.tsx
 
 import { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import type { Skill } from '@accomplish/shared';
 import { Input } from '@/components/ui/input';
 import { DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -113,7 +114,7 @@ export function SkillsSubmenu({ skills, onSkillSelect, onManageSkills, onCreateN
           >
             <path d="M12 5v14M5 12h14" />
           </svg>
-          Create New
+          Create
         </button>
         <button
           onClick={onManageSkills}
@@ -131,23 +132,32 @@ export function SkillsSubmenu({ skills, onSkillSelect, onManageSkills, onCreateN
           </svg>
           Manage
         </button>
-        <button
+        <motion.button
           onClick={onRefresh}
           disabled={isRefreshing}
-          className="flex items-center justify-center px-2 py-2 text-muted-foreground bg-secondary border border-border rounded-md hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
-          title="Refresh skills"
+          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] text-muted-foreground bg-secondary border border-border rounded-md hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
+          whileTap={{ scale: 0.95 }}
         >
-          <svg
-            className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''}`}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
+          <motion.div
+            animate={isRefreshing ? { rotate: 720 } : { rotate: 0 }}
+            transition={isRefreshing
+              ? { duration: 1, repeat: Infinity, ease: 'linear' }
+              : { duration: 0 }
+            }
           >
-            <path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
-            <path d="M21 3v5h-5" />
-          </svg>
-        </button>
+            <svg
+              className="h-3 w-3"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+              <path d="M21 3v5h-5" />
+            </svg>
+          </motion.div>
+          Refresh
+        </motion.button>
       </div>
     </div>
   );

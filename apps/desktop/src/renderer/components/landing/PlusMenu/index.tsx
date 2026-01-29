@@ -39,11 +39,14 @@ export function PlusMenu({ onSkillSelect, onOpenSettings, disabled }: PlusMenuPr
   }, [open]);
 
   const handleRefresh = async () => {
-    if (!window.accomplish) return;
+    if (!window.accomplish || isRefreshing) return;
     setIsRefreshing(true);
     try {
-      await window.accomplish.resyncSkills();
-      const updatedSkills = await window.accomplish.getEnabledSkills();
+      // Run resync and minimum delay in parallel so animation is visible
+      const [, updatedSkills] = await Promise.all([
+        new Promise((resolve) => setTimeout(resolve, 600)),
+        window.accomplish.resyncSkills().then(() => window.accomplish.getEnabledSkills()),
+      ]);
       setSkills(updatedSkills);
     } catch (err) {
       console.error('Failed to refresh skills:', err);
