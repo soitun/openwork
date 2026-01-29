@@ -161,25 +161,25 @@ After creating the skill:
 
 Skills must be saved to the Openwork user data directory under a `skills` folder:
 
-**macOS:** `~/Library/Application Support/@accomplish/desktop/skills/<skill-name>/SKILL.md`
-**Windows:** `%APPDATA%/@accomplish/desktop/skills/<skill-name>/SKILL.md`
-**Linux:** `~/.config/@accomplish/desktop/skills/<skill-name>/SKILL.md`
+**macOS:** `~/Library/Application Support/Openwork/skills/<skill-name>/SKILL.md`
+**Windows:** `%APPDATA%\Openwork\skills\<skill-name>\SKILL.md`
+**Linux:** `~/.config/Openwork/skills/<skill-name>/SKILL.md`
 
 ### How to Save a Skill
 
 1. **Create the skill directory** named after your skill (lowercase, hyphenated):
    ```
-   ~/Library/Application Support/@accomplish/desktop/skills/my-awesome-skill/
+   ~/Library/Application Support/Openwork/skills/my-awesome-skill/
    ```
 
 2. **Write the SKILL.md file** inside that directory:
    ```
-   ~/Library/Application Support/@accomplish/desktop/skills/my-awesome-skill/SKILL.md
+   ~/Library/Application Support/Openwork/skills/my-awesome-skill/SKILL.md
    ```
 
 3. **Add any bundled resources** as subdirectories if needed:
    ```
-   ~/Library/Application Support/@accomplish/desktop/skills/my-awesome-skill/
+   ~/Library/Application Support/Openwork/skills/my-awesome-skill/
    ├── SKILL.md
    ├── scripts/
    ├── references/
