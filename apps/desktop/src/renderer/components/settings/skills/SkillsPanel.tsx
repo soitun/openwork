@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { settingsVariants, settingsTransitions } from '@/lib/animations';
 import { SkillCard } from './SkillCard';
+import openworkFavicon from '/assets/openwork-favicon.png';
 
 type FilterType = 'all' | 'active' | 'inactive' | 'official';
 
@@ -183,7 +184,7 @@ export function SkillsPanel({ refreshTrigger }: SkillsPanelProps) {
         {/* Filter Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex w-[130px] items-center justify-between gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-[13px] font-medium text-foreground transition-colors hover:bg-muted">
+            <button className="flex w-[150px] items-center justify-between gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-[13px] font-medium text-foreground transition-colors hover:bg-muted">
               <div className="flex items-center gap-1.5">
                 <svg
                   className="h-3.5 w-3.5 text-muted-foreground"
@@ -207,7 +208,7 @@ export function SkillsPanel({ refreshTrigger }: SkillsPanelProps) {
               </svg>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-[160px]">
+          <DropdownMenuContent align="start" className="w-[180px]">
             <DropdownMenuItem onClick={() => setFilter('all')} className="flex justify-between">
               All <span className="text-muted-foreground">{filterCounts.all}</span>
             </DropdownMenuItem>
@@ -218,7 +219,11 @@ export function SkillsPanel({ refreshTrigger }: SkillsPanelProps) {
               Inactive <span className="text-muted-foreground">{filterCounts.inactive}</span>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setFilter('official')} className="flex justify-between">
-              By Openwork <span className="text-muted-foreground">{filterCounts.official}</span>
+              <span className="flex items-center gap-1.5">
+                <img src={openworkFavicon} alt="" className="h-3.5 w-3.5" />
+                By Openwork
+              </span>
+              <span className="text-muted-foreground">{filterCounts.official}</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
