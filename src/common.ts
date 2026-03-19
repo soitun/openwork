@@ -99,7 +99,6 @@ export type {
   VertexServiceAccountCredentials,
   VertexAdcCredentials,
 } from './common/types/auth.js';
-
 // OpenCode message types
 export type {
   OpenCodeMessage,
@@ -115,6 +114,13 @@ export type {
 
 // Skills types
 export type { SkillSource, Skill, SkillFrontmatter } from './common/types/skills.js';
+
+// Workspace types
+export type {
+  Workspace,
+  WorkspaceCreateInput,
+  WorkspaceUpdateInput,
+} from './common/types/workspace.js';
 
 // Connector types
 export type {
