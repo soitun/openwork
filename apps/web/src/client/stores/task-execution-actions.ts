@@ -4,7 +4,7 @@ import {
   type Task,
   type TaskStatus,
   type FileAttachmentInfo,
-} from '@accomplish_ai/agent-core';
+} from '@accomplish_ai/agent-core/common';
 import { getAccomplish } from '../lib/accomplish';
 import type { TaskState } from './taskStore';
 import { hasTaskStateToken } from './task-state-helpers';
@@ -62,10 +62,7 @@ export function createTaskExecutionActions(set: SetFn, get: GetFn) {
       }
     },
 
-    sendFollowUp: async (
-      message: string,
-      attachments?: FileAttachmentInfo[],
-    ): Promise<boolean> => {
+    sendFollowUp: async (message: string, attachments?: FileAttachmentInfo[]): Promise<boolean> => {
       const accomplish = getAccomplish();
       const { currentTask, startTask } = get();
       const taskStateToken = get()._taskStateToken;
