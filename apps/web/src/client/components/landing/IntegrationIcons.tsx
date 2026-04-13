@@ -53,26 +53,17 @@ export function getLocalIcon(domain: string): string | undefined {
   return undefined;
 }
 
-export function getFaviconUrl(domain: string, size: number = 16): string {
-  const encodedDomain = encodeURIComponent(domain);
-  return (
-    getLocalIcon(domain) ?? `https://www.google.com/s2/favicons?domain=${encodedDomain}&sz=${size}`
-  );
+/**
+ * Returns a local icon URL for the domain, or null if none is known.
+ * Returns null for unrecognized domains to avoid making network requests
+ * that would generate 404 console errors for API subdomains and obscure domains.
+ */
+export function getFaviconUrl(domain: string): string | null {
+  return getLocalIcon(domain) ?? null;
 }
 
 export function IntegrationIcon({ domain, className }: { domain: string; className?: string }) {
-  const encodedDomain = encodeURIComponent(domain);
-  const src =
-    getLocalIcon(domain) ?? `https://www.google.com/s2/favicons?domain=${encodedDomain}&sz=128`;
-  return (
-    <img
-      alt={domain}
-      src={src}
-      className={className}
-      loading="lazy"
-      onError={(e) => {
-        (e.target as HTMLImageElement).style.display = 'none';
-      }}
-    />
-  );
+  const src = getFaviconUrl(domain);
+  if (!src) { return null; }
+  return <img alt={domain} src={src} className={className} loading="lazy" />;
 }

@@ -87,6 +87,18 @@ const bundles = [
     external: ['playwright'],
   },
   {
+    // Main HTTP server — output as ESM (.mjs) since start-server.ts uses top-level await
+    // and import.meta.url which are incompatible with CJS format.
+    // Referenced by packages/agent-core/src/browser/server.ts via hardcoded path.
+    // Entry must be start-server.ts (calls serve() + keeps process alive), NOT src/index.ts
+    // (which only exports serve without calling it — causes immediate exit with no listener).
+    name: 'dev-browser',
+    entry: 'scripts/start-server.ts',
+    outfile: 'server.mjs',
+    external: ['playwright'],
+    banner: true,
+  },
+  {
     name: 'dev-browser',
     entry: 'scripts/start-server.ts',
     outfile: 'dist/start-server.mjs',
@@ -138,7 +150,14 @@ function verifyBundleOutputs() {
   }
 }
 
-async function bundleSkill({ name, entry, outfile, external = [], banner: needsBanner }) {
+async function bundleSkill({
+  name,
+  entry,
+  outfile,
+  external = [],
+  banner: needsBanner,
+  format: outputFormat,
+}) {
   const skillDir = path.join(skillsDir, name);
   const absEntry = path.join(skillDir, entry);
   const absOutfile = path.join(skillDir, outfile);
@@ -164,7 +183,7 @@ async function bundleSkill({ name, entry, outfile, external = [], banner: needsB
     outfile: absOutfile,
     bundle: true,
     platform: 'node',
-    format: 'esm',
+    format: outputFormat || 'esm',
     ...(needsBanner && {
       banner: {
         js: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);",

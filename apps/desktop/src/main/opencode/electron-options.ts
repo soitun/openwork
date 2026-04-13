@@ -5,9 +5,11 @@ import { DEV_BROWSER_PORT } from '@accomplish_ai/agent-core';
 import {
   getAzureEntraToken,
   ensureDevBrowserServer,
+  shutdownDevBrowserServer,
   buildCliArgs as coreBuildCliArgs,
   createSandboxProvider,
   getModelDisplayName,
+  DEV_BROWSER_CDP_PORT,
   type BrowserServerConfig,
   type SandboxPaths,
 } from '@accomplish_ai/agent-core';
@@ -107,6 +109,7 @@ function getBrowserServerConfig(): BrowserServerConfig {
     mcpToolsPath: getMcpToolsPath(),
     bundledNodeBinPath: bundledPaths?.binDir,
     devBrowserPort: DEV_BROWSER_PORT,
+    devBrowserCdpPort: DEV_BROWSER_CDP_PORT,
   };
 }
 
@@ -123,6 +126,11 @@ async function ensureBrowserServer(callbacks?: Pick<TaskCallbacks, 'onProgress'>
     });
 
   return browserEnsurePromise;
+}
+
+export async function stopDevBrowserServer(): Promise<void> {
+  logOC('INFO', '[Browser] Sending shutdown request to dev-browser server...');
+  await shutdownDevBrowserServer({ devBrowserPort: DEV_BROWSER_PORT, devBrowserCdpPort: DEV_BROWSER_CDP_PORT });
 }
 
 export async function recoverDevBrowserServer(
@@ -155,8 +163,7 @@ export async function onBeforeTaskStart(
     callbacks.onProgress({ stage: 'browser', message: 'Preparing browser...', isFirstTask });
   }
 
-  const browserConfig = getBrowserServerConfig();
-  await ensureDevBrowserServer(browserConfig, callbacks.onProgress);
+  await ensureBrowserServer(callbacks);
 }
 
 export function createElectronTaskManagerOptions(): TaskManagerOptions {
